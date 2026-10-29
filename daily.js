@@ -10,7 +10,7 @@
   var OWN_FIRST_GAP = 3;      // own-game puzzle solved: back in 3 days, then 6, 12...
   var OWN_MAX_GAP = 60;
 
-  // The streak day is the UTC date, on purpose: in India it flips at 5:30am, so
+  // The streak day is the UTC date, on purpose: in Dubai it flips at 4:00am, so
   // a set finished just after midnight still counts for the evening before
   // (the owner asked for this on 2026-10-29).
   function streakDay(d) {
