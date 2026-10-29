@@ -1155,7 +1155,7 @@ var app=(function(){
   // the profile is no longer shown.
   function updateDailyStreakDisplay(){
     var st=loadDaily();
-    var n=Daily.streakFor(st,Daily.localDay());
+    var n=Daily.streakFor(st,Daily.streakDay());
     if(n>0){
       $('#streak-badge').show();
       $('#streak-count').text(n);
@@ -1179,7 +1179,7 @@ var app=(function(){
     return null;
   }
   function todayState(){
-    var st=Daily.ensureToday(loadDaily(),dailyPool(),ownPuzzles(),Daily.localDay());
+    var st=Daily.ensureToday(loadDaily(),dailyPool(),ownPuzzles(),Daily.streakDay());
     saveDaily(st);
     return st;
   }
@@ -1193,7 +1193,7 @@ var app=(function(){
   }
   function recordTodayResult(solved){
     var st=loadDaily();
-    var today=Daily.localDay();
+    var today=Daily.streakDay();
     var finished=Daily.recordResult(st,currentLine.id,solved,today);
     saveDaily(st);
     if(finished)logDayToCloud(st,today);

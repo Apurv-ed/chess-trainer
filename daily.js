@@ -8,7 +8,14 @@
   var MAX_REVIEWS_PER_DAY = 3;
   var REVIEW_AFTER_DAYS = 3;  // a missed puzzle comes back this many days later
 
-  // Local calendar date (the phone's day, not UTC: in India UTC flips at 5:30am).
+  // The streak day is the UTC date, on purpose: in India it flips at 5:30am, so
+  // a set finished just after midnight still counts for the evening before
+  // (the owner asked for this on 2026-10-29).
+  function streakDay(d) {
+    return (d || new Date()).toISOString().slice(0, 10);
+  }
+
+  // Calendar arithmetic on YYYY-MM-DD strings (used by addDays).
   function localDay(d) {
     d = d || new Date();
     function p(n) { return (n < 10 ? '0' : '') + n; }
@@ -95,7 +102,7 @@
   }
 
   var Daily = {
-    localDay: localDay, addDays: addDays, emptyState: emptyState, ensureToday: ensureToday,
+    streakDay: streakDay, localDay: localDay, addDays: addDays, emptyState: emptyState, ensureToday: ensureToday,
     nextPuzzleId: nextPuzzleId, progress: progress, recordResult: recordResult, streakFor: streakFor,
     POOL_PER_DAY: POOL_PER_DAY, OWN_PER_DAY: OWN_PER_DAY, REVIEW_AFTER_DAYS: REVIEW_AFTER_DAYS
   };
