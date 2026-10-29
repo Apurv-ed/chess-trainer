@@ -120,6 +120,7 @@ h1{font-size:1.1em;margin-bottom:6px;color:#e94560}
     </div>
   </header>
   <div id="today-bar"></div>
+  <div id="reminder-row" style="display:none;text-align:center;margin:6px 0"><button id="reminder-btn" onclick="app.enableReminder()" style="padding:8px 14px;border-radius:8px;border:1px solid #ffd700;background:transparent;color:#ffd700;font-weight:700">Turn on 6pm reminder</button><span id="reminder-msg" style="display:block;font-size:.8em;color:#bbb;margin-top:4px"></span></div>
   <div id="line-name"></div>
   <div id="color-badge"></div>
   <div id="board-wrapper"><div id="board"></div><svg id="board-arrows" xmlns="http://www.w3.org/2000/svg"></svg><div id="intro-card"><div class="intro-name"></div><div class="intro-desc"></div></div></div>
@@ -171,6 +172,7 @@ h1{font-size:1.1em;margin-bottom:6px;color:#e94560}
 <script src="tactics-puzzles.js"></script>
 <script src="daily.js"></script>
 <script src="daily-pool.js"></script>
+<script src="push-config.js"></script>
 <script>
 'use strict';
 
@@ -1213,13 +1215,14 @@ var app=(function(){
     updateTodayBar();updateDailyStreakDisplay();
   }
   function updateTodayBar(){
-    if(currentOpening!=='today'){$('#today-bar').hide();return}
+    if(currentOpening!=='today'){$('#today-bar').hide();$('#reminder-row').hide();return}
     var st=todayState();
     var pr=Daily.progress(st);
     var n=Daily.streakFor(st,st.day);
     var line=Daily.dayFinished(st)?(pr.done>=pr.total?'Done for today':'Extra: '+(pr.done-Daily.DAY_SIZE)+' / '+(pr.total-Daily.DAY_SIZE)):'Today: '+pr.done+' / '+Math.min(pr.total,Daily.DAY_SIZE);
     var sub=n>0?'Streak: '+n+' day'+(n===1?'':'s')+' · best '+st.best:(st.best>0?'Finish all '+pr.total+' to start a new streak · best '+st.best:'Finish all '+pr.total+' to start your streak');
     $('#today-bar').html(line+'<span class="sub">'+sub+'</span>').show();
+    updateReminderRow();
   }
   function showDayComplete(){
     var st=todayState();
@@ -1251,6 +1254,49 @@ var app=(function(){
     }catch(e){}
   }
 
+  // ===================== 6PM REMINDER (web push) =====================
+  // Saves this browser's push subscription to Supabase push_subscriptions; the
+  // GitHub Action .github/workflows/daily-reminder.yml pushes at 18:00 Dubai
+  // only if today's set isn't logged in daily_progress.
+  function pushSupported(){
+    return typeof VAPID_PUBLIC_KEY!=='undefined'&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+  }
+  function updateReminderRow(){
+    if(currentOpening!=='today'||!pushSupported()){$('#reminder-row').hide();return}
+    var on=Notification.permission==='granted'&&(function(){try{return localStorage.getItem('chess-trainer-reminder')==='on'}catch(e){return false}})();
+    $('#reminder-btn').toggle(!on);
+    $('#reminder-msg').text(on?'Reminder on: 6pm Dubai, only if today\'s 10 aren\'t done.':'');
+    $('#reminder-row').show();
+  }
+  function urlB64ToUint8(b64){
+    var pad='='.repeat((4-b64.length%4)%4);
+    var raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));
+    var out=new Uint8Array(raw.length);
+    for(var i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);
+    return out;
+  }
+  function enableReminder(){
+    if(!pushSupported())return;
+    $('#reminder-msg').text('Turning on...');
+    Notification.requestPermission().then(function(perm){
+      if(perm!=='granted')throw new Error('Notifications were not allowed. Allow them for this site in Chrome settings, then tap again.');
+      return navigator.serviceWorker.register('sw.js');
+    }).then(function(){return navigator.serviceWorker.ready}).then(function(reg){
+      return reg.pushManager.getSubscription().then(function(sub){
+        return sub||reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8(VAPID_PUBLIC_KEY)});
+      });
+    }).then(function(sub){
+      var j=sub.toJSON();
+      return fetch(SUPABASE_URL+'/rest/v1/push_subscriptions?on_conflict=endpoint',{method:'POST',
+        headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON,'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'},
+        body:JSON.stringify({endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth})});
+    }).then(function(res){
+      if(!res.ok)throw new Error('Could not save the reminder (HTTP '+res.status+'). Try again later.');
+      try{localStorage.setItem('chess-trainer-reminder','on')}catch(e){}
+      updateReminderRow();
+    }).catch(function(err){$('#reminder-msg').text(err.message||String(err))});
+  }
+
   function colorAt(idx){
     var s=(currentLine&&currentLine.startColor)||'w';
     return idx%2===0?s:(s==='w'?'b':'w');
@@ -1258,7 +1304,7 @@ var app=(function(){
 
   $(document).ready(function(){init()});
 
-  return{moreToday:moreToday,switchOpening:switchOpening,hint:hint,explain:explain,nextLine:nextLine,retryLine:retryLine,showLineSelector:showLineSelector,selectLine:selectLine,undo:undo,reportError:reportError,showErrorLog:showErrorLog,shareErrors:shareErrors,clearErrors:clearErrors};
+  return{moreToday:moreToday,enableReminder:enableReminder,switchOpening:switchOpening,hint:hint,explain:explain,nextLine:nextLine,retryLine:retryLine,showLineSelector:showLineSelector,selectLine:selectLine,undo:undo,reportError:reportError,showErrorLog:showErrorLog,shareErrors:shareErrors,clearErrors:clearErrors};
 })();
 </script>
 </body>
