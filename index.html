@@ -21,6 +21,8 @@ h1{font-size:1.1em;margin-bottom:6px;color:#e94560}
 .xp-progress{width:100%;height:5px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px}
 .xp-progress-fill{height:100%;background:linear-gradient(90deg,#e94560,#ff6b6b);border-radius:3px;transition:width .5s}
 #xp-bar .xp-text{font-size:.65em;color:#888;margin-top:1px}
+#today-bar{display:none;text-align:center;font-weight:700;padding:8px 10px;margin:6px auto 0;max-width:520px;border-radius:8px;background:#2b2a27;color:#ffd700}
+#today-bar .sub{display:block;font-weight:400;font-size:.8em;color:#bbb;margin-top:2px}
 .streak-badge{display:flex;align-items:center;gap:3px;font-size:.8em;font-weight:700;color:#ffd700;flex-shrink:0}
 .streak-badge .fire{font-size:1.1em}
 #line-name{font-size:.82em;color:#aaa;text-align:center;min-height:1.3em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -110,12 +112,14 @@ h1{font-size:1.1em;margin-bottom:6px;color:#e94560}
   <header>
     <h1>Chess Opening Trainer</h1>
     <div class="tab-bar">
-      <button id="tab-mix" class="active" onclick="app.switchOpening('mix')">Mix</button>
+      <button id="tab-today" class="active" onclick="app.switchOpening('today')">Today</button>
+      <button id="tab-mix" onclick="app.switchOpening('mix')">Mix</button>
       <button id="tab-ponziani" onclick="app.switchOpening('ponziani')">Ponziani (White)</button>
       <button id="tab-hippo" onclick="app.switchOpening('hippo')">Hippo (Black)</button>
       <button id="tab-tactics" onclick="app.switchOpening('tactics')">Tactics</button>
     </div>
   </header>
+  <div id="today-bar"></div>
   <div id="line-name"></div>
   <div id="color-badge"></div>
   <div id="board-wrapper"><div id="board"></div><svg id="board-arrows" xmlns="http://www.w3.org/2000/svg"></svg><div id="intro-card"><div class="intro-name"></div><div class="intro-desc"></div></div></div>
@@ -165,6 +169,8 @@ h1{font-size:1.1em;margin-bottom:6px;color:#e94560}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
 <script src="tactics-puzzles.js"></script>
+<script src="daily.js"></script>
+<script src="daily-pool.js"></script>
 <script>
 'use strict';
 
@@ -503,7 +509,7 @@ var app=(function(){
   var board,game,currentLine,moveIndex,selectedSquare;
   var playerMoveCount,playerCorrectCount,hintUsed,hintsUsedCount;
   var sessionCorrect=0,sessionTotal=0,sessionCompleted=0,perfectStreak=0;
-  var currentOpening='mix';
+  var currentOpening='today';
   var isAnimating=false;
   var lineSelectMode=false;
   var autoAdvanceTimer=null;
@@ -612,6 +618,7 @@ var app=(function(){
 
   function switchOpening(op){
     currentOpening=op;
+    $('#tab-today').toggleClass('active',op==='today');
     $('#tab-mix').toggleClass('active',op==='mix');
     $('#tab-ponziani').toggleClass('active',op==='ponziani');
     $('#tab-hippo').toggleClass('active',op==='hippo');
@@ -627,6 +634,7 @@ var app=(function(){
   // playBaseMoves()), so no per-item special-casing was needed to support this --
   // see startDrill()/playBaseMoves() for where those per-item checks already live.
   function getLines(){
+    if(currentOpening==='today')return todaySetLines();
     if(currentOpening==='mix')return ALL_LINES;
     return ALL_LINES.filter(function(l){return l.opening===currentOpening})
   }
@@ -650,13 +658,24 @@ var app=(function(){
       setStatus('No puzzles yet -- run a scan to generate some.','info');
       return;
     }
-    var src=specificLine||selectWeightedLine(poolLines);
+    var src=specificLine;
+    if(!src&&currentOpening==='today'){
+      src=todayNextLine();
+      if(!src){showDayComplete();return}
+    }
+    if(!src)src=selectWeightedLine(poolLines);
+    var isDailyPool=!!src.startFen;
     currentLine={id:src.id,name:src.name,description:src.description,result:src.result,
-      isTrap:src.isTrap,cat:src.cat,opening:src.opening,playerColor:src.playerColor,
-      baseMoves:src.baseMoves,flexible:src.flexible,
+      isTrap:src.isTrap,cat:src.cat,opening:isDailyPool?'daily':src.opening,playerColor:src.playerColor,
+      // Lichess puzzles start from a FEN; their first move (the opponent's) is
+      // auto-played with the orange arrow like any other opponent move.
+      baseMoves:isDailyPool?0:src.baseMoves,flexible:src.flexible,startFen:src.startFen||null,
       moves:src.moves.slice(),explanations:$.extend({},src.explanations)};
+    if(currentLine.startFen)game.load(currentLine.startFen);
+    currentLine.startColor=game.turn();
     board.orientation(currentLine.playerColor==='w'?'white':'black');
-    board.position('start');
+    board.position(currentLine.startFen||'start',false);
+    updateTodayBar();
     // Explicit, unmissable color label -- not just relying on board orientation/piece
     // colors to communicate it. Matters most in Mix mode, where a rep can be Ponziani
     // (white) then Hippo (black) then a tactics puzzle (either) back to back, so the
@@ -709,7 +728,7 @@ var app=(function(){
   function playNextAutoOrWait(){
     if(moveIndex>=currentLine.moves.length){finishLine();return}
     var san=currentLine.moves[moveIndex];
-    var turnColor=moveIndex%2===0?'w':'b';
+    var turnColor=colorAt(moveIndex);
     if(turnColor!==currentLine.playerColor){
       isAnimating=true;
       setTimeout(function(){
@@ -807,6 +826,7 @@ var app=(function(){
     sessionCompleted++;
     perfectStreak=isPerfect?perfectStreak+1:0;
     var ls=updateLineStats(currentLine.id,playerMoveCount,playerCorrectCount);
+    if(currentOpening==='today')recordTodayResult(playerCorrectCount===playerMoveCount&&!hintUsed);
     var xpBase=isPerfect?100:accuracy>=70?60:30;
     var streakBonus=Math.min(perfectStreak*5,50);
     var hintPenalty=hintsUsedCount*10;
@@ -850,7 +870,7 @@ var app=(function(){
 
   function hint(){
     if(isAnimating||!currentLine||moveIndex>=currentLine.moves.length)return;
-    if((moveIndex%2===0?'w':'b')!==currentLine.playerColor)return;
+    if(colorAt(moveIndex)!==currentLine.playerColor)return;
     hintUsed=true;hintsUsedCount++;
     var san=currentLine.moves[moveIndex];
     var testGame=new Chess(game.fen());
@@ -862,7 +882,7 @@ var app=(function(){
     if(!currentLine)return;
     var idx=moveIndex;
     if(idx>=currentLine.moves.length)idx=currentLine.moves.length-1;
-    if((idx%2===0?'w':'b')!==currentLine.playerColor&&idx>0)idx--;
+    if(colorAt(idx)!==currentLine.playerColor&&idx>0)idx--;
     var exp=currentLine.explanations[idx];
     $('#explanation-box').text(exp||'No explanation for this move.').fadeIn(200);
   }
@@ -876,7 +896,7 @@ var app=(function(){
     // Need to undo: the opponent's last auto-move + the player's last move
     var stepsBack=0;
     // If it's currently the player's turn, undo player's last move + opponent's move before it
-    var turnColor=moveIndex%2===0?'w':'b';
+    var turnColor=colorAt(moveIndex);
     if(turnColor===currentLine.playerColor){
       // Player's turn: undo opponent auto-move + player's move = 2 moves
       if(moveIndex>=2){game.undo();game.undo();moveIndex-=2;stepsBack=2}
@@ -889,7 +909,7 @@ var app=(function(){
       board.position(game.fen());
       // Rebuild move list
       $('#move-list').html('');
-      var tempGame=new Chess();
+      var tempGame=currentLine.startFen?new Chess(currentLine.startFen):new Chess();
       for(var i=0;i<moveIndex;i++){
         var m=tempGame.move(currentLine.moves[i]);
         if(m)updateMoveList(m,i);
@@ -1100,6 +1120,8 @@ var app=(function(){
 
   function updateMoveList(m,idx){
     var list=$('#move-list');
+    // A FEN start with Black to move shifts the white/black alternation by one.
+    if(currentLine&&currentLine.startColor==='b')idx++;
     var num=Math.floor(idx/2)+1;
     var san=m.san||m;
     if(idx%2===0)list.append('<span class="move-number">'+num+'.</span> <span class="white-move">'+san+'</span> ');
@@ -1128,14 +1150,89 @@ var app=(function(){
     $('#xp-text').text(p.xp+' / '+nextLvl+' XP');
   }
 
+  // The streak shown is the Today streak (finished all 10 puzzles that day),
+  // the one habit the training plan rests on. The old open-the-app streak in
+  // the profile is no longer shown.
   function updateDailyStreakDisplay(){
-    var p=loadProfile();
-    if(p.dailyStreak>1){
+    var st=loadDaily();
+    var n=Daily.streakFor(st,Daily.localDay());
+    if(n>0){
       $('#streak-badge').show();
-      $('#streak-count').text(p.dailyStreak);
+      $('#streak-count').text(n);
     }else{
       $('#streak-badge').hide();
     }
+  }
+
+  // ===================== TODAY (daily set + streak, see daily.js) =====================
+  var DAILY_KEY='chess-trainer-daily';
+  function loadDaily(){
+    try{return $.extend(Daily.emptyState(),JSON.parse(localStorage.getItem(DAILY_KEY))||{})}catch(e){return Daily.emptyState()}
+  }
+  function saveDaily(st){try{localStorage.setItem(DAILY_KEY,JSON.stringify(st))}catch(e){}}
+  function dailyPool(){return typeof DAILY_POOL!=='undefined'?DAILY_POOL:[]}
+  function ownPuzzles(){return ALL_LINES.filter(function(l){return l.opening==='tactics'})}
+  function lineById(id){
+    var pool=dailyPool();
+    for(var i=0;i<pool.length;i++)if(pool[i].id===id)return pool[i];
+    for(var j=0;j<ALL_LINES.length;j++)if(ALL_LINES[j].id===id)return ALL_LINES[j];
+    return null;
+  }
+  function todayState(){
+    var st=Daily.ensureToday(loadDaily(),dailyPool(),ownPuzzles(),Daily.localDay());
+    saveDaily(st);
+    return st;
+  }
+  function todaySetLines(){return todayState().set.map(lineById).filter(Boolean)}
+  function todayNextLine(){
+    var st=todayState();
+    var id=Daily.nextPuzzleId(st);
+    while(id&&!lineById(id)){Daily.recordResult(st,id,true,st.day);id=Daily.nextPuzzleId(st)} // skip a puzzle that no longer exists
+    saveDaily(st);
+    return id?lineById(id):null;
+  }
+  function recordTodayResult(solved){
+    var st=loadDaily();
+    var today=Daily.localDay();
+    var finished=Daily.recordResult(st,currentLine.id,solved,today);
+    saveDaily(st);
+    if(finished)logDayToCloud(st,today);
+    updateTodayBar();updateDailyStreakDisplay();
+  }
+  function updateTodayBar(){
+    if(currentOpening!=='today'){$('#today-bar').hide();return}
+    var st=todayState();
+    var pr=Daily.progress(st);
+    var n=Daily.streakFor(st,st.day);
+    var line=pr.done>=pr.total?'Done for today':'Today: '+pr.done+' / '+pr.total;
+    var sub=n>0?'Streak: '+n+' day'+(n===1?'':'s')+' · best '+st.best:(st.best>0?'Finish all '+pr.total+' to start a new streak · best '+st.best:'Finish all '+pr.total+' to start your streak');
+    $('#today-bar').html(line+'<span class="sub">'+sub+'</span>').show();
+  }
+  function showDayComplete(){
+    var st=todayState();
+    var n=Daily.streakFor(st,st.day);
+    var h=st.history[st.day]||{done:0,correct:0};
+    currentLine=null;
+    board.orientation('white');board.position('start');
+    $('#color-badge').hide();$('#move-list').html('');$('#explanation-box').hide();
+    $('#line-name').text('Done for today');
+    setStatus('All '+h.done+' done ('+h.correct+' solved first try). Streak: '+n+(n===1?' day':' days')+'. See you tomorrow!','correct');
+    updateTodayBar();updateDailyStreakDisplay();
+  }
+  // One row per finished day, so progress can be checked without the phone.
+  // Fails silently: the streak lives on the phone either way.
+  function logDayToCloud(st,today){
+    var h=st.history[today]||{};
+    try{
+      fetch(SUPABASE_URL+'/rest/v1/daily_progress',{method:'POST',
+        headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({day:today,done:h.done||0,correct:h.correct||0,streak:st.streak,best:st.best})}).catch(function(){});
+    }catch(e){}
+  }
+
+  function colorAt(idx){
+    var s=(currentLine&&currentLine.startColor)||'w';
+    return idx%2===0?s:(s==='w'?'b':'w');
   }
 
   $(document).ready(function(){init()});
