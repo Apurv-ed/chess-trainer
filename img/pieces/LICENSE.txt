@@ -1,0 +1,2 @@
+Chess piece images: the Cburnett set from Wikimedia Commons (as shipped by chessboard.js),
+triple-licensed GPL / BSD / GFDL by Colin M.L. Burnett.

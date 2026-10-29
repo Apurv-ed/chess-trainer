@@ -576,7 +576,9 @@ var app=(function(){
     game=new Chess();
     board=Chessboard('board',{
       draggable:false,position:'start',
-      pieceTheme:'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+      // Self-hosted (img/pieces/, Wikimedia Cburnett set, GPL/BSD/GFDL): the external
+      // chessboardjs.com copy failed to load on the owner's phone (2026-10-29).
+      pieceTheme:'img/pieces/{piece}.png'
     });
     $(window).on('resize',function(){board.resize()});
     // Pure tap-to-move: tap piece to select, tap destination to move
