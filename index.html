@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Chess Opening Trainer</title>
+<link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a1a2e;color:#eee;min-height:100vh}
+#app{max-width:500px;margin:0 auto;padding:8px}
+header{text-align:center;padding:4px 0}
+h1{font-size:1.1em;margin-bottom:6px;color:#e94560}
+.tab-bar{display:flex;gap:4px;justify-content:center;margin-bottom:6px}
+.tab-bar button{padding:7px 14px;border:2px solid #e94560;background:transparent;color:#eee;border-radius:20px;font-size:.85em;cursor:pointer;transition:all .2s}
+.tab-bar button.active{background:#e94560;color:#fff}
+#xp-bar{background:#16213e;border-radius:8px;padding:6px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+#xp-bar .level-badge{background:#e94560;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:.75em;font-weight:700;flex-shrink:0}
+#xp-bar .xp-info{flex:1;min-width:0}
+#xp-bar .level-name{font-size:.7em;color:#e94560;font-weight:600}
+.xp-progress{width:100%;height:5px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px}
+.xp-progress-fill{height:100%;background:linear-gradient(90deg,#e94560,#ff6b6b);border-radius:3px;transition:width .5s}
+#xp-bar .xp-text{font-size:.65em;color:#888;margin-top:1px}
+.streak-badge{display:flex;align-items:center;gap:3px;font-size:.8em;font-weight:700;color:#ffd700;flex-shrink:0}
+.streak-badge .fire{font-size:1.1em}
+#line-name{font-size:.82em;color:#aaa;text-align:center;min-height:1.3em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#color-badge{text-align:center;font-size:.85em;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 0;margin-bottom:4px;border-radius:4px}
+#color-badge.badge-white{background:#eeeed2;color:#111}
+#color-badge.badge-black{background:#3a3a3a;color:#eee}
+#board-wrapper{position:relative;width:100%;margin:0 auto}
+#board{width:100%}
+#board-arrows{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
+#intro-card{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;background:rgba(0,0,0,0.85);color:#fff;padding:20px 28px;border-radius:14px;text-align:center;max-width:85%;min-width:200px}
+#intro-card .intro-name{font-size:1.1em;font-weight:700;margin-bottom:6px;color:#e94560}
+#intro-card .intro-desc{font-size:.82em;color:#ccc;line-height:1.4;margin-bottom:6px}
+#intro-card .intro-trap{display:inline-block;background:#ff5252;color:#fff;font-size:.7em;font-weight:700;padding:2px 10px;border-radius:10px;letter-spacing:1px;margin-top:4px}
+.board-b72b1 .white-1e1d7{background-color:#EEEED2 !important}
+.board-b72b1 .black-3c85d{background-color:#769656 !important}
+.highlight-last{box-shadow:inset 0 0 0 100px rgba(255,255,0,0.3)!important}
+.highlight-hint{box-shadow:inset 0 0 0 4px #00d2ff!important}
+.highlight-selected{box-shadow:inset 0 0 0 100px rgba(255,255,0,0.4)!important}
+.highlight-legal{background-image:radial-gradient(circle,rgba(0,0,0,.2) 24%,transparent 25%)!important;background-size:100% 100%!important}
+.highlight-legal-capture{box-shadow:inset 0 0 0 5px rgba(0,0,0,.2)!important;border-radius:0!important}
+#status{text-align:center;padding:8px;font-size:.95em;min-height:2.5em;display:flex;align-items:center;justify-content:center}
+#status.correct{color:#00e676}
+#status.wrong{color:#ff5252}
+#status.info{color:#64b5f6}
+#status.neutral{color:#aaa}
+.controls{display:flex;gap:5px;justify-content:center;padding:3px 0;flex-wrap:wrap}
+.controls button{padding:9px 12px;border:none;border-radius:8px;font-size:.82em;cursor:pointer;transition:all .15s;font-weight:600}
+.btn-hint{background:#0f3460;color:#00d2ff}
+.btn-explain{background:#1a1a4e;color:#bb86fc}
+.btn-next{background:#e94560;color:#fff}
+.btn-retry{background:#533483;color:#fff}
+.btn-menu{background:#16213e;color:#aaa}
+.btn-undo{background:#2a2a3e;color:#ffd700}
+.btn-report{background:#2a1a1a;color:#ff8a80;font-size:.72em!important}
+.controls button:active{transform:scale(.95);opacity:.8}
+#move-list{padding:6px 8px;margin:6px 0;background:#16213e;border-radius:8px;font-size:.78em;min-height:2em;line-height:1.6;color:#aaa;max-height:70px;overflow-y:auto}
+#move-list .move-number{color:#666}
+#move-list .white-move{color:#ddd}
+#move-list .black-move{color:#bbb}
+#explanation-box{display:none;padding:8px 10px;margin:4px 0;background:#1a1a4e;border-left:3px solid #bb86fc;border-radius:0 8px 8px 0;font-size:.82em;color:#bb86fc}
+#stats-panel{padding:8px 10px;margin:6px 0;background:#16213e;border-radius:8px}
+.stats-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;font-size:.78em}
+.stats-label{color:#888}
+.stats-value{color:#eee;font-weight:600}
+.accuracy-bar{width:100%;height:5px;background:#333;border-radius:3px;margin-top:3px;overflow:hidden}
+.accuracy-fill{height:100%;background:linear-gradient(90deg,#e94560,#00e676);border-radius:3px;transition:width .5s}
+#line-selector{display:none;padding:6px}
+#line-selector h3{font-size:.85em;color:#e94560;margin-bottom:6px}
+.cat-label{font-size:.72em;color:#888;margin:8px 0 3px;text-transform:uppercase;letter-spacing:.5px}
+.line-item{padding:8px 10px;margin:3px 0;background:#16213e;border-radius:8px;cursor:pointer;font-size:.8em;display:flex;justify-content:space-between;align-items:center;border:1px solid transparent;gap:6px}
+.line-item:active{background:#1a1a4e}
+.line-item .line-info{flex:1;min-width:0}
+.line-item .line-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.line-item .line-acc{font-size:.7em;color:#888;flex-shrink:0}
+.line-item.trap{border-left:3px solid #ff5252}
+.line-item .line-tag{color:#ff5252;font-size:.65em;font-weight:600}
+.line-item .stars{color:#ffd700;font-size:.7em;flex-shrink:0;margin-left:4px}
+#result-screen{display:none;text-align:center;padding:16px 10px}
+#result-screen h2{color:#e94560;margin-bottom:6px;font-size:1.2em}
+#result-screen p{color:#aaa;font-size:.85em;margin-bottom:3px}
+.result-stat{font-size:1.8em;font-weight:bold;margin:8px 0}
+.result-stat.perfect{color:#00e676}
+.result-stat.good{color:#ffd700}
+.result-stat.needs-work{color:#ff5252}
+#xp-gained{font-size:1em;color:#ffd700;font-weight:700;margin:6px 0;opacity:0;transition:opacity .3s}
+#xp-gained.show{opacity:1}
+#level-up{display:none;text-align:center;padding:10px;margin:6px 0;background:linear-gradient(135deg,#533483,#e94560);border-radius:12px;animation:pulse .6s ease-in-out}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+#level-up h3{color:#fff;font-size:1em}
+#level-up p{color:#ffcdd2;font-size:.8em}
+@media(max-width:500px){#app{padding:4px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="xp-bar">
+    <div class="level-badge" id="level-num">1</div>
+    <div class="xp-info">
+      <div class="level-name" id="level-name">Pawn</div>
+      <div class="xp-progress"><div class="xp-progress-fill" id="xp-fill" style="width:0%"></div></div>
+      <div class="xp-text" id="xp-text">0 / 200 XP</div>
+    </div>
+    <div class="streak-badge" id="streak-badge" style="display:none">
+      <span class="fire">*</span><span id="streak-count">0</span>d
+    </div>
+  </div>
+  <header>
+    <h1>Chess Opening Trainer</h1>
+    <div class="tab-bar">
+      <button id="tab-mix" class="active" onclick="app.switchOpening('mix')">Mix</button>
+      <button id="tab-ponziani" onclick="app.switchOpening('ponziani')">Ponziani (White)</button>
+      <button id="tab-hippo" onclick="app.switchOpening('hippo')">Hippo (Black)</button>
+      <button id="tab-tactics" onclick="app.switchOpening('tactics')">Tactics</button>
+    </div>
+  </header>
+  <div id="line-name"></div>
+  <div id="color-badge"></div>
+  <div id="board-wrapper"><div id="board"></div><svg id="board-arrows" xmlns="http://www.w3.org/2000/svg"></svg><div id="intro-card"><div class="intro-name"></div><div class="intro-desc"></div></div></div>
+  <div id="status" class="neutral">Tap a piece to make your move</div>
+  <div id="explanation-box"></div>
+  <div class="controls" id="drill-controls">
+    <button class="btn-hint" onclick="app.hint()">Hint</button>
+    <button class="btn-explain" onclick="app.explain()">Why?</button>
+    <button class="btn-next" onclick="app.nextLine()" style="display:none" id="btn-next">Next Line</button>
+    <button class="btn-retry" onclick="app.retryLine()" style="display:none" id="btn-retry">Retry</button>
+    <button class="btn-undo" onclick="app.undo()">Undo</button>
+    <button class="btn-menu" onclick="app.showLineSelector()">Lines</button>
+    <button class="btn-report" onclick="app.reportError()">Report</button>
+    <button class="btn-report" onclick="app.showErrorLog()">Errors</button>
+  </div>
+  <div id="move-list"></div>
+  <div id="stats-panel">
+    <div class="stats-row"><span class="stats-label">Session Accuracy</span><span class="stats-value" id="stat-accuracy">--</span></div>
+    <div class="stats-row"><span class="stats-label">Lines Completed</span><span class="stats-value" id="stat-completed">0</span></div>
+    <div class="stats-row"><span class="stats-label">Perfect Streak</span><span class="stats-value" id="stat-streak">0</span></div>
+    <div class="stats-row"><span class="stats-label">Avg Speed</span><span class="stats-value" id="stat-speed">--</span></div>
+    <div class="accuracy-bar"><div class="accuracy-fill" id="accuracy-fill" style="width:0%"></div></div>
+  </div>
+  <div id="line-selector"></div>
+  <div id="error-log" style="display:none;padding:8px;margin:6px 0">
+    <h3 style="font-size:.85em;color:#ff8a80;margin-bottom:6px">Error Reports
+      <button onclick="app.shareErrors()" style="float:right;background:#0f3460;color:#00d2ff;border:none;border-radius:6px;padding:4px 10px;font-size:.78em;cursor:pointer;font-weight:600;margin-left:4px">Share</button>
+      <button onclick="app.clearErrors()" style="float:right;background:#2a1a1a;color:#ff8a80;border:1px solid #ff8a80;border-radius:6px;padding:3px 8px;font-size:.75em;cursor:pointer">Clear</button>
+    </h3>
+    <div id="error-list" style="font-size:.72em;color:#aaa"></div>
+  </div>
+  <div id="result-screen">
+    <h2 id="result-title"></h2>
+    <p id="result-desc"></p>
+    <div class="result-stat" id="result-accuracy"></div>
+    <p id="result-detail"></p>
+    <div id="xp-gained"></div>
+    <div id="level-up"><h3 id="levelup-title"></h3><p id="levelup-desc"></p></div>
+    <div class="controls" style="margin-top:10px">
+      <button class="btn-retry" onclick="app.retryLine()">Retry</button>
+      <button class="btn-next" onclick="app.nextLine()">Next Line</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="tactics-puzzles.js"></script>
+<script>
+'use strict';
+
+// ===================== OPENING DATA =====================
+// L(id,name,desc,result,trap,cat,moves,explanations)
+function L(id,name,desc,result,trap,cat,moves,explanations,bm){return{id:id,name:name,description:desc,result:result,isTrap:!!trap,cat:cat,moves:moves,explanations:explanations,baseMoves:bm}}
+
+var PONZIANI_LINES=[
+// === MAIN LINES ===
+L('ponz-main-nxe4','Main Line: 3...Nf6 4.d4 Nxe4','Black grabs e4. White gains space with d5, trades on g6, then Qf3! threatens MATE on f7.','GothamChess\'s line: Nxg6 + Qf3! The queen hits the e4-knight AND threatens Qxf7# -- at club level this wins on the spot constantly. Bc4 renews the f7 pressure. White is comfortable (+0.2) with a clear attacking plan.',0,'main',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','Nxe4','d5','Ne7','Nxe5','Ng6','Nxg6','hxg6','Qf3','Nf6','Bc4'],
+{6:'Execute the plan behind c3 -- seize the center with d4+e4.',8:'Kick the knight away. The d5 pawn cramps Black.',10:'Recapture the pawn with a strong d5 wedge.',12:'Nxg6! Trade FIRST (Gotham\'s move). NOT Bd3? -- Black refutes it with ...Nxe5! winning the knight.',14:'Qf3!! The star move: threatens Qxf7# MATE and attacks the e4-knight at the same time. Many opponents resign to the fork or get mated.',16:'Bc4! Renew the f7 pressure. Black is tied down defending.'}),
+
+L('ponz-main-deep','Main Line Deep: Qf3 Nf6, Full Setup','Extended main line: after Qf3 forces ...Nf6, complete the setup with Bc4, O-O and h3.','White has an easy, comfortable game (engine: equal, but White\'s play is simpler): d5 wedge, bishop on the f7 diagonal, safe king. h3 stops ...Bg4 from harassing the queen. Black stays cramped defending f7.',0,'main',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','Nxe4','d5','Ne7','Nxe5','Ng6','Nxg6','hxg6','Qf3','Nf6','Bc4','Be7','O-O','d6','h3'],
+{6:'Seize the center with d4.',8:'Kick the knight and gain space.',10:'Recapture on e5.',12:'Nxg6! Trade first -- Bd3? loses the knight to ...Nxe5!',14:'Qf3!! Threatens Qxf7# mate AND the e4-knight.',16:'Bc4 -- keep hammering f7.',18:'Castle. King safe, all pieces pointing at Black\'s king.',20:'h3! Deny ...Bg4 -- the queen stays on her strong post. Lasting, easy edge.'}),
+
+L('ponz-gotham-qe7','Gotham: 5...Qe7 6.cxd4! + 7.Bb5!','After 5.e5 Black pins with ...Qe7. MEMORIZE: 6.cxd4! (NOT Qe2? -- ...d3! deflects and wins e5) then 7.Bb5! pins.','Gotham: "Bb5 must be memorized." White keeps the strong e5 pawn and a pleasant edge (+0.5). The key point: 6.Qe2? loses e5 to the ...d3! deflection -- recapture with the c-pawn first.',0,'main',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','exd4','e5','Qe7','cxd4','d6','Bb5','dxe5','dxe5','Bg4','O-O'],
+{6:'Push d4! The Ponziani plan.',8:'Push e5, attacking the knight. Black pins with ...Qe7 instead of moving it.',10:'cxd4! MEMORIZE THIS: recapture with the c-pawn. (Qe2?? loses the e5 pawn to ...d3! deflecting the queen.)',12:'Bb5!! Gotham: this must be memorized. Pin the c6-knight so e5 stays protected tactically.',14:'Recapture -- the e5 wedge survives and cramps Black.',16:'Castle. Comfortable edge, Black\'s queen is awkward on e7 blocking the bishop.'}),
+
+L('ponz-gotham-qb3','GothamChess Main: Qb3 + Bb5','THE GothamChess Qb3 Ponziani. Qb3 pressures b7 and d5; then Bb5 keeps the tension and pins c6.','White is comfortably developed: bishop pinning c6, a healthy center, and a safe king. Roughly balanced -- the Ponziani equalizes here rather than crushing, but White gets an easy, active game.',0,'main',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','exd4','e5','Nd5','Qb3','Nb6','cxd4','d5','Bb5','Be7','O-O'],
+{6:'Push d4! The whole point of the Ponziani.',8:'Push e5! Kick the knight and grab space.',10:'Qb3! GothamChess\'s key move. Pressures b7 and d5.',12:'Recapture. Central majority.',14:'Bb5! Keep the tension and pin the c6 knight instead of releasing it with exd6 (which hands Black the bishop pair and the edge).',16:'Castle. White is solidly developed with active pieces and bishop pressure -- a balanced, very playable middlegame.'}),
+
+L('ponz-gotham-exd4-bc5-trap','TRAP: 5.e5 Bc5?? 6.exf6! (GothamChess)','After 5.e5, Black develops Bc5 but ignores the attack on f6 -- exf6 wins a clean piece.','TRAP! Black ignored the pawn attacking f6. exf6! wins a whole knight for just a pawn -- White is up ~+3.',1,'trap',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','exd4','e5','Bc5','exf6','Qxf6','Bb5'],
+{6:'Push d4.',8:'Push e5, attacking the f6 knight.',10:'exf6! Black ignored the threat -- just take the knight! A whole piece for a pawn.',12:'Bb5! Develop with a pin. White is up a knight for a pawn with an easy game.'}),
+
+L('ponz-main-exd4','Main Line: 3...Nf6 4.d4 exd4 (Book)','The book continuation with cxd4 and Bb4+ (alternative to GothamChess Qb3).','White has a big center with d4+e5. Easy development.',0,'main',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','exd4','e5','Nd5','cxd4','Bb4+','Bd2','Bxd2+','Qxd2','d6'],
+{6:'Push d4, challenging the center.',8:'Advance with tempo! Pawn attacks the f6 knight.',10:'Recapture. Powerful pawn center on d4+e5.',12:'Block the check and develop the bishop.',14:'Recapture with queen, well-placed on d2.'}),
+
+L('ponz-gotham-bg5-trap','TRAP: Bg5 Poisoned e4 (GothamChess)','After 3...Nf6 4.d4 d6 5.d5 Ne7 6.Bg5, the e4 pawn is poisoned!','TRAP! If Black takes e4, Qa4+ forks king and knight. Famous GothamChess trick.',1,'trap',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','d6','d5','Ne7','Bg5','Nxe4','Qa4+','Bd7','Qxe4'],
+{6:'Push d4 (if Black doesn\'t play d5, we play d4!).',8:'Push d5! Kick the knight and grab space.',10:'Bg5! THE GothamChess trick. Pins the f6 knight and poisons the e4 pawn.',12:'Qa4+! Fork the king and the knight on e4. Black can\'t save both.',14:'Win the knight back. White is up a clean pawn with a better position.'}),
+
+L('ponz-gotham-bg5-nontrap','Bg5 Line: Black Doesn\'t Take (GothamChess)','After 6.Bg5, if Black plays correctly with ...h6, trade on f6 -- do NOT retreat.','Bxf6! wrecks Black\'s kingside pawns (doubled f-pawns). Honest eval: Black is slightly better (-0.4) -- ...h6 is the correct defense to the Bg5 trap try. Bxf6 is damage control; play against the doubled pawns.',0,'main',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','d6','d5','Ne7','Bg5','h6','Bxf6','gxf6','Nbd2','f5','Bb5+','Bd7','Qb3'],
+{6:'Push d4.',8:'Push d5! Kick the knight.',10:'Bg5! Even if Black doesn\'t take e4, the pin is annoying.',12:'Bxf6! Take and double Black\'s f-pawns. (NOT Bh4? -- ...g5 Bg3 h5! and the bishop gets buried while Black attacks.)',14:'Nbd2, developing toward c4/e4.',16:'Bb5+! Force the trade of Black\'s good bishop.',18:'Qb3, hitting b7 and eyeing the queenside. Balanced game -- play against the shattered kingside pawns.'}),
+
+L('ponz-gotham-bc5-qa4','GothamChess: 3...Bc5 4.d4 with Qa4+','After 3...Bc5, White gets a huge center. d5 kicks the knight and Qa4+ creates threats.','White has a massive center and the queen creates tactical threats.',0,'main',
+['e4','e5','Nf3','Nc6','c3','Bc5','d4','exd4','cxd4','Bb4+','Nc3','Nf6','d5','Ne7','Bd3','d6','Qa4+'],
+{6:'Push d4! Challenge the bishop.',8:'Recapture. Big center.',10:'Nc3! Block the check AND develop the knight.',12:'Push d5! Kick the knight to the rim.',14:'Develop actively.',16:'Qa4+! Creates tactical threats including Qxb4 and dxc6.'}),
+
+// === COUNTERGAMBIT ===
+L('ponz-countergambit-f6','Countergambit: 3...d5 4.Qa4 f6 (Steinitz)','Black\'s best response with ...f6. Complex, roughly balanced middlegame.','Complex middlegame, roughly balanced -- Black equalizes comfortably with ...f6. White plays for active piece play, not an advantage.',0,'counter',
+['e4','e5','Nf3','Nc6','c3','d5','Qa4','f6','Bb5','Ne7','exd5','Qxd5','d4','Bd7'],
+{6:'KEY MOVE! Pin the c6 knight. e5 is now under fire.',8:'Pin the knight again and develop actively.',10:'Capture the center pawn with initiative.',12:'Push forward, challenging Black\'s e5 pawn.'}),
+
+L('ponz-countergambit-deep','Steinitz Deep: After 7.d4 Bd7 8.O-O','Extended Steinitz line showing White\'s plan against Black\'s center.','White targets Black\'s overextended center with Re1 and piece pressure.',0,'counter',
+['e4','e5','Nf3','Nc6','c3','d5','Qa4','f6','Bb5','Ne7','exd5','Qxd5','d4','Bd7','O-O','e4','Nfd2','f5','Re1'],
+{6:'Pin the knight -- always the key move after 3...d5.',8:'Develop the bishop with another pin.',10:'Capture in the center.',12:'Push d4, challenging Black.',14:'Castle to safety.',16:'Knight retreats to d2, preparing to attack Black\'s e4 pawn.',18:'Rook to e1, targeting the weak e4 pawn. White has a plan.'}),
+
+L('ponz-countergambit-bd7','Countergambit: 3...d5 Qa4 Bd7 (Gambit)','Black\'s counter-trick with Nd4 discovered attack.','White is up a pawn but Black has some activity.',0,'counter',
+['e4','e5','Nf3','Nc6','c3','d5','Qa4','Bd7','exd5','Nd4','Qd1','Nxf3+','Qxf3','Nf6','Bc4','e4','Qe2'],
+{6:'Pin the knight.',8:'Capture the center pawn.',10:'Retreat queen to d1 -- safest square.',12:'Recapture with queen (keeps pawn structure).',14:'Develop bishop actively, defending d5.',16:'Retreat queen. Up a pawn with a good position.'}),
+
+L('ponz-leonhardt','Leonhardt: 3...d5 4.Qa4 Nf6','Black develops the knight aggressively. White grabs e5 and consolidates the extra pawn.','White is a pawn up on the board, but Black\'s bishop pair and activity are full compensation -- engine-verified dead equal (-0.10), not a winning endgame. Consolidate with d3/Be2/Nd2 because it\'s sound, not because it\'s winning. (The old e5? push loses the edge outright to ...Bxe5!)',0,'counter',
+['e4','e5','Nf3','Nc6','c3','d5','Qa4','Nf6','Nxe5','Bd6','Nxc6','bxc6','d3','O-O','Be2','Re8','Nd2'],
+{6:'Pin the knight.',8:'Grab the free e5 pawn! The pin on c6 makes it safe.',10:'Capture the knight, destroying Black\'s pawn structure.',12:'d3! Protect e4 and consolidate the extra pawn. (NOT e5? -- ...Bxe5! just takes it back with a better game.)',14:'Be2, calm development. The extra pawn is what matters.',16:'Nd2, solid. White is a pawn up; weather Black\'s activity and win the endgame.'}),
+
+// === TRAPS ===
+L('ponz-bd7-queensac-trap','TRAP: 4...Bd7 ...Bg4 9.Bb5+!! (Queen Sac)','Gotham\'s showcase: Black pins with ...Bg4 -- offer the queen! Bb5+ c6 dxc6 Bxf3 c7+! wins it all back with interest.','The famous queen-sac trap: after Bxf3 White\'s c-pawn marches with check -- c7+! forces ...Qd7, and Bxd7+ regains the queen. White emerges TWO pawns up (Black wins one back on c7): honest eval +0.85, a comfortable extra-pawn game.',1,'trap',
+['e4','e5','Nf3','Nc6','c3','d5','Qa4','Bd7','exd5','Nd4','Qd1','Nxf3+','Qxf3','Nf6','Bc4','Bg4','Bb5+','c6','dxc6','Bxf3','c7+','Qd7','Bxd7+','Nxd7','gxf3'],
+{6:'Qa4! Pin against the loose d5 pawn.',8:'Take the free pawn.',10:'Qd1! Retreat calmly -- NOT cxd4?? which walks into the discovered attack.',12:'Recapture the knight.',14:'Develop with pressure on f7.',16:'Bb5+!! THE QUEEN SAC SETUP. Ignore the attack on your queen -- check first!',18:'dxc6! Keep going -- the pawn joins the attack. Your queen is still hanging. Trust the line!',20:'c7+!! The point: the pawn forks with check. Black MUST block with the queen.',22:'Bxd7+ -- regain the queen with check.',24:'gxf3, collecting the bishop. Two extra pawns; Black will win c7 back. Comfortable edge, spectacular sequence.'}),
+
+L('ponz-d6-trap','TRAP: 5...d6?? (Beginner Blunder)','After 5.d5 Ne7 6.Nxe5, Black plays the natural d6 and gets crushed.','TRAP! Bb5+ wins decisive material. Very common beginner mistake.',1,'trap',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','Nxe4','d5','Ne7','Nxe5','d6','Bb5+','c6','dxc6','bxc6','Nxc6'],
+{6:'Push d4.',8:'Kick the knight with d5.',10:'Capture the e5 pawn.',12:'KEY: Bb5+! Pin the pawn. After ...c6, dxc6 destroys Black\'s position.',14:'Capture! Opens up Black\'s position completely.',16:'Take the c6 pawn -- winning massive material.'}),
+
+L('ponz-bc5-trap','TRAP: 5...Bc5 6.dxc6! (Wins a Piece)','After 5.d5, Black develops Bc5 -- just take the knight with dxc6! (NOT Qa4?? which loses to ...Nxf2!)','dxc6! wins a piece. After 6...bxc6 7.Be3 White is up a knight for a pawn (+1.6). If instead 6...Bxf2+ it\'s the Fraser Defence (see that line) -- Black gets real compensation there.',1,'trap',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','Nxe4','d5','Bc5','dxc6','bxc6','Be3'],
+{6:'Push d4.',8:'Kick the knight with d5.',10:'dxc6! Just take the piece. (Qa4?? loses to ...Nxf2! forking queen and rook -- the old "double attack" idea is refuted.)',12:'Be3! Challenge the bishop and blunt the f2 pressure. White is up a knight for a pawn.'}),
+
+L('ponz-countergambit-bd6-trap','TRAP: 3...d5 Qa4 Bd6?? (Win a Piece!)','Black blocks own queen with Bd6 -- White wins a full piece with dxc6!','TRAP! White captures the knight with dxc6. Black lost a whole piece because Bd6 blocked the queen.',1,'trap',
+['e4','e5','Nf3','Nc6','c3','d5','Qa4','Bd6','exd5','Ne7','dxc6','bxc6','d4'],
+{6:'Pin the c6 knight.',8:'Capture! Black\'s queen can\'t retake because Bd6 blocks it.',10:'Take the knight! The pawn on d5 captures the Nc6. White wins a full piece!',12:'Push d4. White is up a whole knight with a dominant center.'}),
+
+L('ponz-countergambit-dxe4-trap','TRAP: 3...d5 Qa4 dxe4?? (Pinned Knight)','Black takes e4 but the pinned knight can\'t defend e5.','TRAP! White wins a pawn. Pinned knight is helpless.',1,'trap',
+['e4','e5','Nf3','Nc6','c3','d5','Qa4','dxe4','Nxe5','Bd7','Nxd7','Qxd7','Qxe4+'],
+{6:'Pin the knight!',8:'Grab the free pawn! Pinned knight can\'t capture.',10:'Capture the bishop.',12:'Pick up the second pawn with check!'}),
+
+
+// === OTHER RESPONSES ===
+L('ponz-d6-d5-bg5-trap','TRAP: 3...d6 4.d4 Nf6 5.d5! Bg5 (Poisoned e4)','After 3...d6, push d5 to kick the knight, then Bg5 poisons the e4 pawn!','TRAP! If Black takes e4, Qa4+ forks king and knight. Same trick as the Nf6 line.',1,'trap',
+['e4','e5','Nf3','Nc6','c3','d6','d4','Nf6','d5','Ne7','Bg5','Nxe4','Qa4+','Bd7','Qxe4'],
+{6:'Push d4! Two pawns in the center.',8:'Push d5! Kick the knight -- gain space. GothamChess rule: push d5 when you can!',10:'Bg5! Poison the e4 pawn. If Black takes it, Qa4+ wins it back and more.',12:'Qa4+! Fork the king and the knight on e4.',14:'Win the knight. White is up a clean pawn.'}),
+
+L('ponz-d6-d5-bg5-safe','3...d6: d5 Bg5 (Black Plays Safe)','After d5 Bg5, if Black defends with ...h6, trade on f6 -- do NOT retreat.','Bxf6! doubles Black\'s f-pawns. Honest eval: Black is slightly better (-0.35) -- ...h6 refutes the trap try cleanly. Bxf6 is damage control; target the doubled pawns. (Bh4? is much worse: ...g5/...h5.)',0,'other',
+['e4','e5','Nf3','Nc6','c3','d6','d4','Nf6','d5','Ne7','Bg5','h6','Bxf6','gxf6','Nbd2','f5','Bb5+','Bd7','Qb3'],
+{6:'Push d4.',8:'Push d5! Kick the knight and grab space.',10:'Bg5! Even if Black doesn\'t bite, the pin is annoying.',12:'Bxf6! Take and wreck the pawns. (NOT Bh4? -- ...g5 Bg3 h5! traps the bishop\'s prospects and hands Black the attack.)',14:'Nbd2, heading for c4 or e4.',16:'Bb5+! Trade off Black\'s good bishop with tempo.',18:'Qb3 -- pressure on b7. Balanced; target the doubled f-pawns long-term.'}),
+
+L('ponz-passive-be7','Passive: 3...Be7 4.d4 d6 5.d5!','Safety-first by Black. Push d5 — knight retreats to b8 (e7 is blocked by bishop)!','d5 kicks the knight to b8 (e7 blocked!). White expands with c4 for a genuine, lasting space advantage (~+0.8).',0,'other',
+['e4','e5','Nf3','Nc6','c3','Be7','d4','d6','d5','Nb8','Bd3','Nf6','O-O','O-O','c4','Nbd7','Nc3'],
+{6:'Push d4!',8:'Push d5! Knight can\'t go to e7 (bishop blocks it!) — must retreat to b8!',10:'Develop to d3.',12:'Castle.',14:'c4! Grab more space and clamp down. The d5+c4 bind gives White a comfortable, lasting edge.',16:'Nc3, developing behind the pawn chain. White is clearly better with a big space advantage.'}),
+
+L('ponz-aggressive-f5','Aggressive: 3...f5','Black attacks e4 but weakens the kingside.','White has a clear advantage: Black\'s kingside is wrecked (doubled f-pawns, open g-file) and White regains the pawn with the better structure.',0,'other',
+['e4','e5','Nf3','Nc6','c3','f5','d4','fxe4','Nxe5','Qf6','Ng4','Qg6','Bf4','Nf6','Nxf6+','gxf6','d5','Ne5','Nd2','d6','Qa4+','Bd7','Qxe4'],
+{6:'Strike back in the center! Exploit the weakened kingside.',8:'Jump in! Knight attacks c6, threatens Qh5+.',10:'Retreat to g4, attacking the queen.',12:'Develop with tempo, threatening c7.',14:'Nxf6+! Trade off and WRECK Black\'s kingside -- gxf6 leaves doubled f-pawns and an open g-file.',16:'d5! Now kick the c6 knight -- it has no good square.',18:'Nd2, rerouting the knight to round up the e4 pawn.',20:'Qa4+! Check, and pick up the loose e4 pawn next.',22:'Qxe4. White regains the pawn with a clear edge and a much healthier structure.'}),
+
+L('ponz-aggressive-f5-nxe5','Aggressive: 3...f5 (Black takes knight)','Black captures the e5 knight. White gets a powerful center.','White has a powerful center and development lead.',0,'other',
+['e4','e5','Nf3','Nc6','c3','f5','d4','fxe4','Nxe5','Nxe5','dxe5','Qh4+','g3','Qe7','Bf4'],
+{6:'Strike back immediately.',8:'Jump into the center.',10:'Recapture. Strong center on c3+e5.',12:'Block the check. Pawn is well-placed on g3.',14:'Develop with a strong position.'}),
+
+L('ponz-bc5-main','Response: 3...Bc5','Common amateur move. White gets a strong center.','White has a strong center and better development.',0,'other',
+['e4','e5','Nf3','Nc6','c3','Bc5','d4','exd4','cxd4','Bb4+','Bd2','Bxd2+','Nbxd2','d5','exd5','Qxd5','Bc4','Qd8','O-O'],
+{6:'Push d4.',8:'Recapture. Strong d4+e4 center.',10:'Block the check with the bishop.',12:'Recapture with the knight.',14:'Capture the center pawn.',16:'Develop bishop to the active c4 square.',18:'Castle. White has better development.'}),
+
+L('ponz-nge7','Kmoch/Reti: 3...Nge7','Unusual knight development. White gets a comfortable position.','White has a comfortable edge with better center.',0,'other',
+['e4','e5','Nf3','Nc6','c3','Nge7','d4','exd4','cxd4','d5','exd5','Nxd5','Bc4','Be7','O-O','O-O','Re1'],
+{6:'Push d4 as always.',8:'Recapture.',10:'Capture -- open the position.',12:'Develop to the active c4 diagonal.',14:'Castle to safety.',16:'Rook to the open e-file. White has a nice position.'}),
+
+L('ponz-fraser','Fraser Defence: 5...Bc5 6.dxc6 Bxf2+','Sharp gambit. White grabs material but Black gets real compensation.','White grabs material (a piece and pawns) but Black has genuine compensation -- the king is stuck on e2 and Black is active. Roughly balanced: consolidate carefully rather than expecting a win.',0,'other',
+['e4','e5','Nf3','Nc6','c3','Nf6','d4','Nxe4','d5','Bc5','dxc6','Bxf2+','Ke2','Bb6','Qd5','Nf2','cxb7','Bxb7','Qxb7'],
+{6:'Push d4.',8:'Kick the knight with d5.',10:'Capture the knight! White wins material, but Black gets a sharp attack for it.',12:'Step to e2. The only good square.',14:'Centralize the queen with Qd5, hitting f7.',16:'cxb7! Grab the pawn and open the b-file against Black\'s rook.',18:'Qxb7. White is up material, but Black is active -- keep the king safe and consolidate.'}),
+
+// === HANDLING BLACK DEVIATIONS (before Ponziani is established) ===
+L('ponz-deviation-petrov','Deviation: 2...Nf6 Petrov/Russian Defense','Black mirrors your Nf3. Don\'t panic -- Nxe5 is the right response!','White has active development, central pawns, and a small edge. The Petrov is drawish but White is fine.',0,'other',
+['e4','e5','Nf3','Nf6','Nxe5','d6','Nf3','Nxe4','d4','d5','Bd3','Nc6','O-O','Be7','c4'],
+{4:'Nxe5! YES, take the pawn. The pin on the knight is gone -- 3.Nxe4 would give it back immediately.',6:'Retreat to f3. Don\'t play 4.Nxf7?? (Cochrane Gambit) -- too risky for beginners.',8:'d4! Claim the center with tempo. The Ne4 is now under attack.',10:'Bd3! Active development, eyeing the h7 pawn.',12:'Castle. White has active pieces and a solid center.',14:'c4! Challenge the d5 pawn and open lines for the bishops.'},3),
+
+L('ponz-deviation-alekhine','Deviation: 1...Nf6 Alekhine\'s Defense','Black attacks your e4 pawn immediately. Kick the knight with e5 and build a big center!','White has a dominant center. Black\'s knights get kicked around.',0,'other',
+['e4','Nf6','e5','Nd5','d4','d6','Nf3','Bg4','Be2','e6','O-O','Be7','c4','Nb6','Nc3'],
+{2:'e5! Kick the knight immediately. Don\'t retreat or defend e4.',4:'d4! Build the massive center. Knight has nowhere to go.',6:'Nf3. Develop normally. The center is powerful.',8:'Be2! Don\'t panic about the pin. Just develop calmly.',10:'Castle. White has a huge center advantage.',12:'c4! Attack the retreating knight again and expand.',14:'Nc3! All pieces out, center dominant. Black is cramped.'},1),
+
+L('ponz-deviation-sicilian','Deviation: 1...c5 Sicilian (Alapin 2.c3)','Black plays the Sicilian. Use 2.c3 -- the Ponziani idea applied one move earlier!','White cashes in with dxc5: after ...Qxd1 Rxd1 the queenless middlegame gives White a small, risk-free pull (+0.5) with easy play.',0,'other',
+['e4','c5','c3','d5','exd5','Qxd5','d4','Nf6','Nf3','e6','Be2','Nc6','O-O','Be7','Be3','O-O','dxc5'],
+{2:'c3! The Alapin -- same c3 idea as the Ponziani but against the Sicilian. Solidify first.',4:'exd5! Open the center. The queen on d5 will be harassed.',6:'d4! Claim the full center. The queen must move.',8:'Nf3 with tempo -- queen has to move again.',10:'Be2! Simple, solid development.',12:'Castle. White has a stable center.',14:'Be3! Develop and support d4.',16:'dxc5! Cash in: trade queens on d1 and Black must spend time regaining the c5 pawn. Small, risk-free edge.'},1),
+
+// === BEGINNER PUNISHMENTS ===
+L('ponz-beginner-qf6','Beginner: 3...Qf6 (Early Queen)','Black brings out the queen too early. White develops with tempo.','White is winning (+2): huge center and space, Black\'s knight is buried on d8 and the early queen achieved nothing.',0,'beginner',
+['e4','e5','Nf3','Nc6','c3','Qf6','d4','exd4','cxd4','Bb4+','Nc3','Nge7','d5','Nd8','Be2'],
+{6:'Push d4 -- challenge the center.',8:'Recapture. Strong center.',10:'Develop with Nc3, blocking the check and developing.',12:'Push d5! Gain space and push the knight back.',14:'Be2! Safe development. (NOT Bd3?? -- after ...Bxc3+ bxc3 Qxc3+ the check also hits d3, and if Qd2 blocks, ...Qxa1 grabs the rook.)'}),
+
+L('ponz-beginner-qe7','Beginner: 3...Qe7 (Blocks Bishop)','Black blocks their own bishop. Push d5 -- knight retreats since e7 is blocked by the queen!','d5 forces knight to d8/b8 (e7 blocked by queen!). White has massive space.',0,'beginner',
+['e4','e5','Nf3','Nc6','c3','Qe7','d4','d6','d5','Nd8','Bd3','Nf6','O-O','g6','Nbd2','Bg7','Re1','O-O','Nf1'],
+{6:'Push d4.',8:'Push d5! Knight can\'t go to e7 (queen is there!) so it retreats to d8. Devastating.',10:'Develop to d3.',12:'Castle.',14:'Develop knight.',16:'Rook to e1.',18:'Nf1 heading to g3. Huge space advantage.'}),
+
+L('ponz-waiting-a6','Waiting: 3...a6 (Wastes Tempo)','Black wastes a move. Punish with d5, then Nxe5! -- the e5 pawn hangs because ...a6 replaced ...d6.','Nxe5! wins a clean pawn (+1). Because Black wasted time on ...a6 instead of ...d6, the e5 pawn simply hangs after the knight retreats to e7.',0,'beginner',
+['e4','e5','Nf3','Nc6','c3','a6','d4','Nf6','d5','Ne7','Nxe5','Nxe4','Qe2','f5','Nd2','Nf6','Ndf3','d6','Nd3'],
+{6:'Push d4. Black wasted a move on ...a6.',8:'Push d5! Punish the wasted tempo. Kick the knight and grab space.',10:'Nxe5! Just take -- unlike the ...d6 lines, nothing defends e5 here. (Bg5? instead loses the initiative to ...Nxe4 and ...g5.)',12:'Qe2! Pin the e4 knight against the king.',14:'Nd2, adding an attacker to the pinned knight.',16:'Ndf3, keeping the extra pawn and solid control.',18:'Nd3. White is a clean pawn up with the better position.'})
+];
+
+var HIPPO_LINES=[
+// === VS 1.e4 ===
+L('hippo-vs-e4-main','Hippo vs 1.e4 -- Full Setup','Build the complete Hippo wall against 1.e4, then lock the center with ...e5.','Hippo setup complete -- center locked with d5/e5. Black is a bit cramped (normal for the Hippo) but solid. Plan ...f5 next (see the deep line). Do NOT castle here -- it walks into d5/Bc4 ideas with a White edge.',0,'vs-e4',
+['e4','g6','d4','Bg7','Nc3','d6','Nf3','a6','Be2','b6','O-O','Bb7','Be3','e6','Qd2','Nd7','Rad1','Ne7','Rfe1','h6','d5','e5'],
+{1:'Start the Hippo with ...g6. Most flexible first move.',3:'Fianchetto the dark-squared bishop to the long diagonal.',5:'First pillar of the Hippo. d6 controls e5 and c5.',7:'...a6 prevents Nb5 here -- the Nc3 can jump to b5 targeting c7. Only play this when needed!',9:'Prepare the queenside fianchetto.',11:'Complete fianchetto. Bb7 targets e4.',13:'Second pillar! e6 controls d5 and f5.',15:'Knight to d7, not f6! Keeps g7 bishop diagonal clear.',17:'Second knight to e7. Can reroute to g6, f5, or c6.',19:'...h6 stops Ng5 AND Bg5 here -- both Nf3 and Be3 can reach g5. Skip this if no piece threatens g5.',21:'KEY BREAK! Lock with ...e5 after d5. Setup complete -- prepare ...f5 next (pawn push, NOT Nf5 -- the e4 pawn captures Nf5!). Don\'t castle into d5/Bc4.'}),
+
+L('hippo-vs-e4-deep-f5','Hippo vs 1.e4 -- Deep: ...f5 Kingside Attack','After d5/e5 lock, skip castling and launch the thematic ...f5 attack.','Equal material after the trade. Black has the active f-file and well-placed pieces. Balanced but dynamic position.',0,'vs-e4',
+['e4','g6','d4','Bg7','Nc3','d6','Nf3','a6','Be2','b6','O-O','Bb7','Be3','e6','Qd2','Nd7','Rad1','Ne7','Rfe1','h6','d5','e5','Bc4','f5','exf5','Nxf5','Bd3','Nf6','Ne4','Nxe4','Bxe4'],
+{1:'Start with ...g6.',3:'Fianchetto.',5:'Establish d6.',7:'...a6 prevents Nb5 -- the Nc3 can jump there targeting c7 and d6. Check for knights before playing this!',9:'Prepare fianchetto.',11:'Complete fianchetto.',13:'Second pillar e6.',15:'Knight to d7.',17:'Second knight to e7.',19:'...h6 stops Ng5 and Bg5 -- both Nf3 and Be3 threaten g5 here.',21:'Lock with ...e5.',23:'Skip castling! Center is locked. Launch ...f5 immediately! THE thematic break.',25:'Recapture with knight on f5 -- beautifully placed.',27:'Bring second knight to f6 for kingside pressure.',29:'Trade to open lines. Black has active play.',30:'White recaptures. Equal material -- Black has the f-file and active pieces. Excellent Hippo compensation.'}),
+
+L('hippo-vs-e4-e5-push','Hippo vs 1.e4 -- White Pushes e5','White grabs space with e5. CAPTURE ...dxe5! -- queens trade and Black fully equalizes.','...dxe5! is the equalizer (Ruddell + engine agree): queens come off via d-file and Black is dead equal (0.0), with the g7 bishop eyeing the e5 pawn. The old ...d5 lock left White +1.7.',0,'vs-e4',
+['e4','g6','d4','Bg7','Nc3','d6','Nf3','e6','e5','dxe5','Bg5','Ne7','dxe5','Qxd1+','Rxd1','Bd7'],
+{1:'Start with ...g6.',3:'Fianchetto.',5:'Set up d6.',7:'Put e6 early -- anticipating e5. NO ...a6 needed yet -- react to the center first!',9:'CAPTURE ...dxe5! (NOT ...d5? locking -- that\'s a worse French, +1.7 White.) Open the d-file and trade queens.',11:'...Ne7, calm -- the Bg5 pin has no bite with queens about to trade.',13:'Trade queens with check! Black\'s position is rock solid.',15:'...Bd7, connecting. Dead equal -- White\'s e5 pawn is a long-term target for the g7 bishop.'}),
+
+L('hippo-vs-e4-e5-deep-c5','Hippo vs 1.e4 -- Deep: Queenless Middlegame','After ...dxe5 and the queen trade, regroup the light bishop to c6 -- it dominates the long diagonal.','Equal-to-pleasant for Black (+0.1): the ...Bd7-c6 regroup puts the bishop on the monster diagonal, hitting e4/f3. White\'s e5 pawn stays weak. This is the Hippo at its best -- solid AND active.',0,'vs-e4',
+['e4','g6','d4','Bg7','Nc3','d6','Nf3','e6','e5','dxe5','Bg5','Ne7','dxe5','Qxd1+','Rxd1','Bd7','Ne4','Bc6'],
+{1:'Start with ...g6.',3:'Fianchetto.',5:'Set up d6.',7:'Place e6 early -- anticipating the e5 push.',9:'CAPTURE ...dxe5! Queens trade, Black equalizes on the spot.',11:'...Ne7 -- calm development, the pin is toothless.',13:'Trade queens with check.',15:'...Bd7! Heading for c6.',17:'...Bc6! The bishop lands on the dream diagonal -- pressuring the Ne4 and f3. Fully equal, easier game for Black.'}),
+
+// === VS 1.d4 ===
+L('hippo-vs-d4-main','Hippo vs 1.d4 -- Spassky Line','Classic Hippo vs queen\'s pawn. Skip ...a6, develop with ...Nd7, then grab kingside space.','Full Hippo deployed. Expand with ...g5 on the kingside -- do NOT castle here (it walks into d5+Bxh6). Black is slightly cramped but solid, aiming for ...f5.',0,'vs-d4',
+['d4','g6','c4','Bg7','Nc3','d6','e4','Nd7','Nf3','e6','Be2','b6','O-O','Bb7','Be3','Ne7','Qd2','h6','Rad1','g5'],
+{1:'Same move against everything! ...g6 starts the Hippo.',3:'Fianchetto immediately.',5:'Establish d6.',7:'...Nd7 develops a piece instead of ...a6. While Nc3 CAN go to b5, the knight is better used developing. Be flexible!',9:'Place e6.',11:'Prepare fianchetto.',13:'Complete fianchetto. Bb7 targets e4.',15:'Second knight to e7.',17:'...h6 stops Ng5 AND Bg5 -- both Nf3 and Be3 can reach g5 here. This one is needed!',19:'...g5! Grab kingside space and prepare ...f5. Castling here is a mistake -- White breaks with d5 and Bxh6, trading your best bishop.'}),
+
+L('hippo-vs-d4-e5-push','Hippo vs 1.d4 -- White Pushes e5','White pushes e5. CAPTURE ...dxe5! -- Black takes over the initiative.','...dxe5! and Black is already slightly BETTER (-0.5): White\'s e5 pawn is weak, the b7 bishop rakes the long diagonal, and ...Nc6 piles on. The old ...d5 lock gave White a lasting space pull.',0,'vs-d4',
+['d4','g6','c4','Bg7','Nc3','d6','e4','e6','Nf3','Nd7','Be2','Ne7','O-O','b6','e5','dxe5','dxe5','Bb7','Bf4','Nc6'],
+{1:'Universal ...g6.',3:'Fianchetto.',5:'Set up d6.',7:'Both central pawns in place. No ...a6 -- react to the center.',9:'Knight to d7.',11:'Second knight to e7.',13:'Prepare fianchetto and the central strike.',15:'CAPTURE ...dxe5! (NOT ...d5? locking -- White gets a lasting space edge.) The e5 pawn becomes a target.',17:'Complete the fianchetto -- the b7 bishop hits the long diagonal hard.',19:'...Nc6! Attack e5 again. Black has the initiative -- engine already prefers Black here.'}),
+
+L('hippo-spassky-deep','Spassky 1966 -- Deep Line to Move 16','The actual Petrosian-Spassky 1966 World Championship line.','Spassky\'s kingside attack! Active play after ...f5.',0,'vs-d4',
+['Nf3','g6','c4','Bg7','d4','d6','Nc3','Nd7','e4','e6','Be2','b6','O-O','Bb7','Be3','Ne7','Qc2','h6','Rad1','O-O','d5','e5','Qc1','Kh7','g3','f5','exf5','Nxf5','Bd3','Bc8','Kg2','Nf6'],
+{1:'Universal ...g6.',3:'Fianchetto.',5:'Establish d6.',7:'...Nd7 early -- Spassky skipped ...a6 and developed a piece instead.',9:'Place e6.',11:'Prepare fianchetto.',13:'Complete fianchetto. Bb7 targets e4.',15:'Second knight to e7.',17:'...h6 stops Ng5 AND Bg5 -- Nf3 and Be3 both threaten g5 here. Justified!',19:'Castle.',21:'Lock with ...e5!',23:'Move king to h7 for safety before ...f5. Avoids checks on a2-g8 diagonal.',25:'Launch ...f5! THE thematic break.',27:'Recapture with knight -- beautifully placed on f5.',29:'Reroute bishop to c8! Can go to d7, e6, or g4 for kingside attack.',31:'Bring knight to f6, preparing ...Nh5 or ...g5.'}),
+
+// === VS 1.c4 / 1.Nf3 ===
+L('hippo-vs-c4-english','Hippo vs 1.c4 -- English','Against the English. Often transposes to d4 structures.','Full Hippo setup. Break on the kingside with ...g5 (castling walks into d5+Bxh6). Slightly cramped but solid.',0,'vs-cf',
+['c4','g6','Nc3','Bg7','d4','d6','e4','e6','Nf3','Nd7','Be2','b6','O-O','Bb7','Be3','Ne7','Qd2','h6','Rad1','a6','Rfe1','g5'],
+{1:'Same ...g6 against everything.',3:'Fianchetto.',5:'Set up d6.',7:'Central pawn duo in place.',9:'Knight to d7.',11:'Prepare fianchetto.',13:'Complete fianchetto. Pressure on e4.',15:'Second knight to e7.',17:'...h6 stops Ng5 and Bg5 -- both Nf3 and Be3 can jump to g5 here. Needed!',19:'...a6 prevents Nb5 -- the Nc3 can reach b5 targeting c7. Only play ...a6 when a knight threatens b5!',21:'...g5! Expand on the kingside. Don\'t castle here -- White breaks with d5 and Bxh6.'}),
+
+L('hippo-vs-c4-quiet','Hippo vs 1.c4 -- White Plays d3','Quiet English without d4. Very comfortable Hippo.','Comfortable Hippo. With White\'s modest d3, jump the knight to e5 (...Ne5) rather than castle -- a strong central outpost d3 can\'t challenge. Roughly balanced.',0,'vs-cf',
+['c4','g6','g3','Bg7','Bg2','d6','Nc3','e6','Nf3','Nd7','O-O','Ne7','d3','b6','e4','Bb7','Be3','h6','Qd2','a6','Rae1','Ne5'],
+{1:'Universal ...g6.',3:'Both sides fianchetto.',5:'Set up d6.',7:'Establish e6/d6.',9:'Knight to d7.',11:'Second knight to e7.',13:'Prepare fianchetto. White\'s d3 is modest.',15:'Complete fianchetto. Bb7 pressures e4.',17:'...h6 stops Ng5 and Bg5 -- Nf3 and Be3 both threaten g5. Only play this when those pieces are active!',19:'...a6 prevents Nb5 -- the Nc3 is eyeing b5. Without Nc3, skip ...a6 and develop instead.',21:'...Ne5! The knight lands on a superb central square -- White\'s modest d3 can\'t kick it. Better than castling here.'}),
+
+L('hippo-vs-nf3-reti','Hippo vs 1.Nf3 -- Reti (Spassky \'66)','Historic Petrosian-Spassky 1966 World Championship line. No ...a6 -- develop fast.','Spassky\'s setup. Tuck the king to h7 BEFORE ...f5 -- playing ...f5 at once runs into tactics on the a2-g8 diagonal. Then break for active counterplay.',0,'vs-cf',
+['Nf3','g6','c4','Bg7','d4','d6','Nc3','Nd7','e4','e6','Be2','b6','O-O','Bb7','Be3','Ne7','Qc2','h6','Rad1','O-O','d5','e5','Qc1','Kh7'],
+{1:'Universal ...g6.',3:'Fianchetto.',5:'Establish d6.',7:'...Nd7 develops a piece. Skip ...a6 -- while Nc3 could go b5, development is more urgent here.',9:'Place e6.',11:'Prepare fianchetto.',13:'Complete fianchetto.',15:'Second knight to e7.',17:'...h6 stops Ng5 and Bg5 -- Nf3 and Be3 both can reach g5. This is justified!',19:'Castle.',21:'Lock with ...e5!',23:'...Kh7! Prep the king before ...f5 -- this is Spassky\'s move order. Playing ...f5 immediately walks into tactics on the a2-g8 diagonal.'}),
+
+L('hippo-vs-nf3-quiet','Hippo vs 1.Nf3 -- Quiet Reti','White plays quiet with d3. Castle first, ...a6 can wait.','Full Hippo. Choose ...d5 or ...e5 at the right moment.',0,'vs-cf',
+['Nf3','g6','g3','Bg7','Bg2','d6','O-O','e6','d3','Ne7','e4','Nd7','Nc3','b6','Be3','Bb7','Qd2','h6','Nh4','O-O','f4','a6'],
+{1:'Universal ...g6.',3:'Fianchetto.',5:'Set up d6.',7:'Establish e6/d6 center.',9:'Knight to e7.',11:'Second knight behind the chain.',13:'Prepare fianchetto.',15:'Complete fianchetto.',17:'...h6 stops Ng5 and Bg5 -- both Nf3 and Be3 can reach g5. Justified!',19:'Castle FIRST. King safety is more urgent than ...a6 when the position might open.',21:'NOW ...a6 -- the Nc3 can reach b5, so this prevents it. Notice we castled first because that was more urgent!'}),
+
+// === HANDLING THREATS ===
+L('hippo-vs-austrian','Hippo vs Austrian Attack (f4)','DANGER: Against f4, play ...Nf6 (Pirc), NOT pure Hippo.','Transposed to Pirc. Sharp but playable. ...e5 is the key break.',0,'threats',
+['e4','g6','d4','Bg7','Nc3','d6','f4','Nf6','Nf3','O-O','Bd3','Na6','O-O','c5','e5','Nd7'],
+{1:'Start with ...g6 as usual.',3:'Fianchetto.',5:'Establish d6.',7:'CRITICAL: Play ...Nf6, NOT ...e6! Against f4, transpose to the Pirc. No ...a6 or ...h6 -- this is urgent!',9:'Castle early -- position is OPEN with f4, king needs safety immediately.',11:'Knight to a6 -- heading for c7 to support ...b5 or ...e5.',13:'Strike with ...c5! OPPORTUNISTIC -- challenge d4 before the e5 push.',15:'Retreat. Plan to undermine e5 with ...f6 or ...Nb6.'}),
+
+L('hippo-vs-bc4','Hippo vs Early Bc4 (Targeting f7)','White plays Bc4 early. ...e6 immediately blocks the diagonal.','Bc4 neutralized by ...e6. Develop with ...Nf6 rather than castling (which lets White break with d5 for an edge). Solid but slightly passive.',0,'threats',
+['e4','g6','d4','Bg7','Bc4','d6','Nf3','e6','O-O','Ne7','Nc3','Nd7','Be3','b6','Qd2','Bb7','Rad1','a6','Bb3','h6','Rfe1','Nf6'],
+{1:'Start with ...g6.',3:'Fianchetto.',5:'Play ...d6 calmly.',7:'KEY: Play ...e6 immediately! Blocks the Bc4 diagonal. Be OPPORTUNISTIC -- react to threats first.',9:'Develop knight to e7.',11:'Second knight to d7.',13:'Prepare fianchetto.',15:'Complete fianchetto.',17:'...a6 prevents Nb5 -- the Nc3 can jump to b5 targeting c7. Check: is there a knight that can reach b5? Yes, Nc3!',19:'...h6 stops Ng5 and Bg5 -- Nf3 and Be3 both can reach g5. Only play when justified!',21:'...Nf6! Develop actively rather than castle -- castling here invites d5 with a White pull.'}),
+
+L('hippo-vs-h4-storm','Hippo vs h4 Pawn Storm','White storms with h4. Do NOT play the slow Hippo -- go Pirc-style with ...Nf6 and ...h5.','Storm neutralized: ...Nf6 + ...h5 jams the h-file, then complete development and break with ...e5. Roughly equal. (The slow ...a6/...b6 Hippo gets steamrolled here.)',0,'threats',
+['e4','g6','d4','Bg7','Nc3','d6','h4','Nf6','f3','h5','Be3','c6','a4','O-O','Nge2','e5'],
+{1:'Start with ...g6.',3:'Fianchetto.',5:'Play ...d6.',7:'...Nf6! Against the h4 storm, go Pirc-style. The slow ...a6/...b6 Hippo gets run over by h5 -- develop and challenge the center instead.',9:'...h5! Stop the h-pawn dead. White\'s storm is blunted before it starts.',11:'...c6, preparing ...d5 or ...Qa5 and giving the king a haven.',13:'Castle -- with the h-file jammed by ...h5, the king is safe on g8.',15:'...e5! Strike the center. Fully equal, storm neutralized.'}),
+
+L('hippo-vs-bh6','Hippo vs Bh6 Threat -- Break with ...exd5','Don\'t allow a favorable Bh6 trade. Break the center with ...exd5 IMMEDIATELY when White plays d5.','...exd5 the moment White plays d5 -- this defuses the Bh6-trade plan AND avoids dxe6. Black stays solid (engine +0.35 White, normal Hippo range), keeping the g7 bishop.',0,'threats',
+['e4','g6','d4','Bg7','Nc3','d6','Nf3','a6','Be2','b6','O-O','Bb7','Be3','e6','Qd2','Nd7','d5','exd5','exd5','Ne7','Bg5','O-O','Rfe1','Nf6'],
+{1:'Start with ...g6.',3:'Fianchetto.',5:'Establish d6.',7:'...a6 prevents Nb5 -- the Nc3 can jump to b5. Needed here!',9:'Prepare fianchetto.',11:'Complete fianchetto.',13:'Place e6.',15:'Develop knight to d7.',17:'...exd5 IMMEDIATELY! (Not ...Ne7? first -- White plays dxe6! fxe6 Ng5 and Black\'s position collapses.) Capture the moment the pawn arrives on d5.',19:'NOW the knight comes to e7, with the center already clarified.',21:'Castle -- king safe, structure sound.',23:'...Nf6, developing calmly. Solid, roughly equal -- the Bh6 threat never materialized.'}),
+
+// === MIDDLEGAME PLANS ===
+L('hippo-f5-attack','Middlegame: ...f5 Kingside Attack','After the d5/e5 lock, execute the ...f5 break and keep the pieces active.','Black has carried out the ...f5 break and reached a roughly balanced, dynamic middlegame. ...Ng4 hits the e3-bishop and keeps the initiative -- typical Hippo activity.',0,'plans',
+['d4','g6','c4','Bg7','Nc3','d6','e4','Nd7','Nf3','e6','Be2','b6','O-O','Bb7','Be3','Ne7','Qd2','h6','Rad1','O-O','d5','e5','Na4','f5','exf5','Nxf5','Bd3','Nf6','Nc3','Ng4'],
+{1:'Start with ...g6.',3:'Fianchetto.',5:'Establish d6.',7:'...Nd7 develops a piece. Skip ...a6 -- we are heading for a kingside attack, not queenside defense.',9:'Place e6.',11:'Prepare fianchetto.',13:'Complete fianchetto.',15:'Second knight to e7.',17:'...h6 stops Ng5 AND Bg5 -- Nf3 and Be3 both can reach g5 here. Justified!',19:'Castle.',21:'Lock with ...e5.',23:'Launch ...f5! THE key moment -- the center is locked, so open the kingside.',25:'Recapture with knight -- beautifully centralized on f5.',27:'Bring the second knight to f6.',29:'...Ng4! Hit the e3-bishop and keep the initiative. (The natural-looking ...Nd4 actually loses -- White just plays Nxd4.)'}),
+
+L('hippo-c5-break','Middlegame: Meet e5 with ...dxe5','When a fully-developed White pushes e5, capture ...dxe5 -- do NOT lock with ...d5.','Black is slightly better (-0.3) after ...dxe5: the e5 pawn is a fixed weakness, the b7 bishop rakes the diagonal, and ...O-O completes a comfortable game. Capturing beats locking in every e5-push structure.',0,'plans',
+['e4','g6','d4','Bg7','Nc3','d6','Nf3','e6','Be2','Nd7','O-O','Ne7','Be3','b6','e5','dxe5','dxe5','Bb7','Qe1','a6','Rd1','O-O'],
+{1:'Start with ...g6.',3:'Fianchetto.',5:'Set up d6.',7:'Place e6 early. No ...a6 -- we need to react to White\'s e5 push.',9:'Knight to d7. Development over prophylaxis!',11:'Second knight to e7.',13:'Prepare fianchetto.',15:'CAPTURE ...dxe5! The rule: when White pushes e5, take it -- locking with ...d5 concedes space for nothing.',17:'Complete the fianchetto -- b7 bishop on the big diagonal.',19:'...a6 -- useful waiting move, keeps b5 covered before committing the king.',21:'Castle. Black is comfortable and slightly better -- e5 is weak forever.'}),
+
+L('hippo-b5-expand','Middlegame: ...b5 Queenside Expansion','Lock the center, then expand with ...b5. Delay castling in the locked position.','Black expands with ...b5-b4 for queenside counterplay. Double-edged and roughly balanced -- White has resources too, so play accurately.',0,'plans',
+['d4','g6','c4','Bg7','Nc3','d6','e4','Nd7','Nf3','e6','Be2','b6','O-O','Bb7','Be3','Ne7','Qd2','a6','d5','e5','Na4','h6','Qc2','b5','cxb5','axb5','Nc3','b4','Na4','O-O'],
+{1:'Start with ...g6.',3:'Fianchetto.',5:'Establish d6.',7:'Knight to d7.',9:'Place e6.',11:'Prepare fianchetto.',13:'Complete fianchetto.',15:'Second knight to e7.',17:'...a6 is ESSENTIAL here -- prepares the ...b5 push. The Nc3 can also reach b5, so it serves double duty.',19:'Lock with ...e5.',21:'...h6 stops Ng5 AND Bg5 -- Nf3 and Be3 can both reach g5. Justified!',23:'Push ...b5! SKIP castling -- center is locked (d5+e5), king is safe. Be OPPORTUNISTIC and attack!',25:'Recapture ...axb5, opening the a-file.',27:'Push ...b4! Drive the knight away. Strong queenside initiative.',29:'NOW castle -- the attack is rolling. Flexible castling!'})
+];
+
+var ALL_LINES=[].concat(
+  PONZIANI_LINES.map(function(l){l.opening='ponziani';l.playerColor='w';if(!l.baseMoves)l.baseMoves=5;return l}),
+  HIPPO_LINES.map(function(l){l.opening='hippo';l.playerColor='b';l.baseMoves=4;l.flexible=true;return l}),
+  (typeof TACTICS_PUZZLES!=='undefined'?TACTICS_PUZZLES:[]).map(function(l){l.opening='tactics';return l})
+);
+
+// ===================== CATEGORIES =====================
+var CATEGORIES={
+  ponziani:[
+    {key:'main',label:'Main Lines'},
+    {key:'counter',label:'Countergambit (3...d5)'},
+    {key:'trap',label:'Traps'},
+    {key:'other',label:'Other Responses'},
+    {key:'beginner',label:'Punish Beginner Moves'}
+  ],
+  hippo:[
+    {key:'vs-e4',label:'vs 1.e4'},
+    {key:'vs-d4',label:'vs 1.d4'},
+    {key:'vs-cf',label:'vs 1.c4 / 1.Nf3'},
+    {key:'threats',label:'Handling Threats'},
+    {key:'plans',label:'Middlegame Plans'}
+  ],
+  tactics:[
+    {key:'blunder',label:'Blunders'},
+    {key:'missed-win',label:'Missed Wins'}
+  ]
+};
+
+// ===================== GAMIFICATION =====================
+var LEVELS=[
+  {name:'Pawn',xp:0},
+  {name:'Knight',xp:200},
+  {name:'Bishop',xp:500},
+  {name:'Rook',xp:1000},
+  {name:'Queen',xp:2000},
+  {name:'King',xp:3500},
+  {name:'Candidate Master',xp:5500},
+  {name:'Master',xp:8000},
+  {name:'Grandmaster',xp:12000},
+  {name:'World Champion',xp:20000}
+];
+
+function loadProfile(){
+  try{return JSON.parse(localStorage.getItem('chess-trainer-profile'))||{xp:0,dailyStreak:0,lastDay:null,perfectStreak:0}}catch(e){return{xp:0,dailyStreak:0,lastDay:null,perfectStreak:0}}
+}
+function saveProfile(p){localStorage.setItem('chess-trainer-profile',JSON.stringify(p))}
+function getLevel(xp){
+  for(var i=LEVELS.length-1;i>=0;i--){if(xp>=LEVELS[i].xp)return i}
+  return 0;
+}
+function checkDailyStreak(){
+  var p=loadProfile();
+  var today=new Date().toISOString().slice(0,10);
+  if(p.lastDay===today)return p;
+  var yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if(p.lastDay===yesterday){p.dailyStreak++}
+  else if(p.lastDay!==today){p.dailyStreak=1}
+  p.lastDay=today;
+  saveProfile(p);
+  return p;
+}
+function awardXP(amount){
+  var p=loadProfile();
+  var oldLevel=getLevel(p.xp);
+  p.xp+=amount;
+  var newLevel=getLevel(p.xp);
+  saveProfile(p);
+  return{oldLevel:oldLevel,newLevel:newLevel,totalXP:p.xp,gained:amount,leveledUp:newLevel>oldLevel};
+}
+
+// ===================== SPACED REPETITION =====================
+function loadStats(){try{return JSON.parse(localStorage.getItem('chess-trainer-stats'))||{}}catch(e){return{}}}
+function saveStats(s){localStorage.setItem('chess-trainer-stats',JSON.stringify(s))}
+function getLineStats(id){var s=loadStats();return s[id]||{attempts:0,perfect:0,weight:1.0,mastery:0}}
+function updateLineStats(id,totalMoves,correctMoves){
+  var s=loadStats();
+  var ls=s[id]||{attempts:0,perfect:0,weight:1.0,mastery:0};
+  ls.attempts++;
+  var acc=correctMoves/Math.max(totalMoves,1);
+  if(acc===1){ls.perfect++;ls.weight=Math.max(0.2,ls.weight-0.15);ls.mastery=Math.min(3,ls.perfect)}
+  else if(acc>=0.7){ls.weight=Math.max(0.3,ls.weight-0.05)}
+  else{ls.weight+=0.4}
+  s[id]=ls;
+  saveStats(s);
+  return ls;
+}
+function selectWeightedLine(lines){
+  var weights=lines.map(function(l){return getLineStats(l.id).weight});
+  var total=weights.reduce(function(a,b){return a+b},0);
+  var r=Math.random()*total,cum=0;
+  for(var i=0;i<weights.length;i++){cum+=weights[i];if(r<=cum)return lines[i]}
+  return lines[lines.length-1];
+}
+
+// ===================== SOUND ENGINE =====================
+var Sound=(function(){
+  var ctx=null;
+  function getCtx(){if(!ctx)try{ctx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}return ctx}
+  function play(type){
+    var c=getCtx();if(!c)return;
+    if(c.state==='suspended')c.resume();
+    if(type==='move'){var o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='triangle';o.frequency.value=600;g.gain.setValueAtTime(0.15,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.1);o.start(c.currentTime);o.stop(c.currentTime+0.1)}
+    else if(type==='capture'){var o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sawtooth';o.frequency.value=300;g.gain.setValueAtTime(0.25,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.15);o.start(c.currentTime);o.stop(c.currentTime+0.15)}
+    else if(type==='correct'){var o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sine';o.frequency.setValueAtTime(880,c.currentTime);o.frequency.setValueAtTime(1100,c.currentTime+0.08);g.gain.setValueAtTime(0.15,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.2);o.start(c.currentTime);o.stop(c.currentTime+0.2)}
+    else if(type==='wrong'){var o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='square';o.frequency.value=180;g.gain.setValueAtTime(0.18,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.3);o.start(c.currentTime);o.stop(c.currentTime+0.3)}
+    else if(type==='complete'){[660,880,1100,1320].forEach(function(f,i){var o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sine';o.frequency.value=f;var t=c.currentTime+i*0.1;g.gain.setValueAtTime(0.12,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.15);o.start(t);o.stop(t+0.15)})}
+  }
+  return{play:play};
+})();
+
+// ===================== APP =====================
+var app=(function(){
+  var board,game,currentLine,moveIndex,selectedSquare;
+  var playerMoveCount,playerCorrectCount,hintUsed,hintsUsedCount;
+  var sessionCorrect=0,sessionTotal=0,sessionCompleted=0,perfectStreak=0;
+  var currentOpening='mix';
+  var isAnimating=false;
+  var lineSelectMode=false;
+  var autoAdvanceTimer=null;
+  var moveStartTime=0,sessionMoveTimeTotal=0,sessionMoveCount=0;
+  var lineMoveTimeTotal=0,lineMoveCount=0;
+  var lastUserAttempt=null;
+
+  // ===================== ARROW SYSTEM =====================
+  function getSquareCenter(sq){
+    var boardEl=$('#board');
+    var boardW=boardEl.width();
+    var sqSize=boardW/8;
+    var file=sq.charCodeAt(0)-97;
+    var rank=parseInt(sq[1])-1;
+    var orient=board.orientation();
+    var x,y;
+    if(orient==='white'){x=file*sqSize+sqSize/2;y=(7-rank)*sqSize+sqSize/2}
+    else{x=(7-file)*sqSize+sqSize/2;y=rank*sqSize+sqSize/2}
+    return{x:x,y:y};
+  }
+  function drawArrow(from,to,color){
+    var svg=$('#board-arrows')[0];
+    var boardEl=$('#board');
+    var boardW=boardEl.width();
+    svg.setAttribute('viewBox','0 0 '+boardW+' '+boardW);
+    var f=getSquareCenter(from),t=getSquareCenter(to);
+    var dx=t.x-f.x,dy=t.y-f.y;
+    var len=Math.sqrt(dx*dx+dy*dy);
+    var ux=dx/len,uy=dy/len;
+    var headLen=boardW/8*0.35;
+    var shaftW=boardW/8*0.18;
+    var headW=boardW/8*0.35;
+    var tipX=t.x,tipY=t.y;
+    var baseX=t.x-ux*headLen,baseY=t.y-uy*headLen;
+    var px=-uy,py=ux;
+    var points=[
+      (f.x+px*shaftW/2)+','+(f.y+py*shaftW/2),
+      (baseX+px*shaftW/2)+','+(baseY+py*shaftW/2),
+      (baseX+px*headW/2)+','+(baseY+py*headW/2),
+      tipX+','+tipY,
+      (baseX-px*headW/2)+','+(baseY-py*headW/2),
+      (baseX-px*shaftW/2)+','+(baseY-py*shaftW/2),
+      (f.x-px*shaftW/2)+','+(f.y-py*shaftW/2)
+    ].join(' ');
+    var poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('points',points);
+    poly.setAttribute('fill',color||'rgba(255,170,0,0.8)');
+    svg.appendChild(poly);
+  }
+  function clearArrows(){$('#board-arrows').empty()}
+
+  // ===================== INTRO CARD =====================
+  function showIntroCard(line,cb){
+    var card=$('#intro-card');
+    card.find('.intro-name').text(line.name);
+    card.find('.intro-desc').text(line.description);
+    card.find('.intro-trap').remove();
+    if(line.isTrap)card.append('<div class="intro-trap">TRAP</div>');
+    card.fadeIn(200);
+    setTimeout(function(){card.fadeOut(300,function(){if(cb)cb()})},2000);
+  }
+
+  function init(){
+    game=new Chess();
+    board=Chessboard('board',{
+      draggable:false,position:'start',
+      pieceTheme:'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+    });
+    $(window).on('resize',function(){board.resize()});
+    // Pure tap-to-move: tap piece to select, tap destination to move
+    $('#board').on('click','.square-55d63',function(){
+      handleSquareClick($(this).attr('data-square'));
+    });
+    checkDailyStreak();
+    updateXPDisplay();
+    updateDailyStreakDisplay();
+    loadExplanations();
+    startDrill();
+  }
+
+  function selectPiece(sq){
+    clearHighlights();
+    clearArrows();
+    selectedSquare=sq;
+    highlightSquare(sq,'highlight-selected');
+    game.moves({square:sq,verbose:true}).forEach(function(m){
+      highlightSquare(m.to,m.captured?'highlight-legal-capture':'highlight-legal');
+    });
+  }
+
+  function handleSquareClick(sq){
+    if(isAnimating||!currentLine)return;
+    if(game.turn()!==currentLine.playerColor)return;
+    if(moveIndex>=currentLine.moves.length)return;
+    var piece=game.get(sq);
+    if(selectedSquare){
+      if(sq===selectedSquare){clearHighlights();clearArrows();selectedSquare=null;return}
+      if(piece&&piece.color===currentLine.playerColor){selectPiece(sq);return}
+      tryMove(selectedSquare,sq,currentLine.moves[moveIndex]);
+      clearHighlights();clearArrows();
+      selectedSquare=null;
+    }else{
+      if(piece&&piece.color===currentLine.playerColor){selectPiece(sq)}
+    }
+  }
+
+  function switchOpening(op){
+    currentOpening=op;
+    $('#tab-mix').toggleClass('active',op==='mix');
+    $('#tab-ponziani').toggleClass('active',op==='ponziani');
+    $('#tab-hippo').toggleClass('active',op==='hippo');
+    $('#tab-tactics').toggleClass('active',op==='tactics');
+    hideLineSelector();startDrill();
+  }
+
+  // 'mix' pools every line (Ponziani + Hippo + Tactics) into one weighted-random
+  // draw -- same selectWeightedLine()/getLineStats() mechanism the single-opening
+  // tabs already use (errors raise a line's weight, perfects lower it), just over
+  // the full set instead of one category. Each line is fully self-describing
+  // (playerColor drives board orientation, opening drives the tactics fast-path in
+  // playBaseMoves()), so no per-item special-casing was needed to support this --
+  // see startDrill()/playBaseMoves() for where those per-item checks already live.
+  function getLines(){
+    if(currentOpening==='mix')return ALL_LINES;
+    return ALL_LINES.filter(function(l){return l.opening===currentOpening})
+  }
+
+  function startDrill(specificLine){
+    if(autoAdvanceTimer){clearTimeout(autoAdvanceTimer);autoAdvanceTimer=null}
+    hideResult();hideLineSelector();
+    game.reset();clearHighlights();clearArrows();
+    selectedSquare=null;hintUsed=false;hintsUsedCount=0;
+    playerMoveCount=0;playerCorrectCount=0;moveIndex=0;
+    lineMoveTimeTotal=0;lineMoveCount=0;moveStartTime=0;
+    var poolLines=getLines();
+    if(!poolLines.length){
+      currentLine=null;
+      board.orientation('white');board.position('start');
+      $('#color-badge').hide();
+      $('#line-name').text('No lines yet');
+      $('#move-list').html('');
+      $('#explanation-box').hide();
+      $('#btn-next').hide();$('#btn-retry').hide();
+      setStatus('No puzzles yet -- run a scan to generate some.','info');
+      return;
+    }
+    var src=specificLine||selectWeightedLine(poolLines);
+    currentLine={id:src.id,name:src.name,description:src.description,result:src.result,
+      isTrap:src.isTrap,cat:src.cat,opening:src.opening,playerColor:src.playerColor,
+      baseMoves:src.baseMoves,flexible:src.flexible,
+      moves:src.moves.slice(),explanations:$.extend({},src.explanations)};
+    board.orientation(currentLine.playerColor==='w'?'white':'black');
+    board.position('start');
+    // Explicit, unmissable color label -- not just relying on board orientation/piece
+    // colors to communicate it. Matters most in Mix mode, where a rep can be Ponziani
+    // (white) then Hippo (black) then a tactics puzzle (either) back to back, so the
+    // side you're playing changes with no warning otherwise.
+    $('#color-badge').show().text('You are playing '+(currentLine.playerColor==='w'?'White':'Black'))
+      .removeClass('badge-white badge-black').addClass(currentLine.playerColor==='w'?'badge-white':'badge-black');
+    $('#line-name').text(currentLine.name);
+    $('#move-list').html('');
+    $('#explanation-box').hide();
+    $('#btn-next').hide();$('#btn-retry').hide();
+    setStatus('Setting up position...','info');
+    playBaseMoves();
+  }
+
+  function playBaseMoves(){
+    // Tactics puzzles set baseMoves to the actual ply number from a real game
+    // (can be 100+), unlike opening lines (baseMoves 4-5) -- animating those
+    // move-by-move at 150ms each would take 15+ seconds just to reach the
+    // puzzle. Jump straight to the position instead; opening lines keep the
+    // animated walk-through since it's short and pedagogically useful there.
+    if(currentLine.opening==='tactics'){
+      isAnimating=true;
+      while(moveIndex<currentLine.baseMoves&&moveIndex<currentLine.moves.length){
+        var san=currentLine.moves[moveIndex];
+        var m=game.move(san);
+        if(!m){console.error('Invalid base move:',san,moveIndex,game.fen());moveIndex++;continue}
+        updateMoveList(m,moveIndex);
+        moveIndex++;
+      }
+      board.position(game.fen(),false);
+      isAnimating=false;
+      playNextAutoOrWait();
+      return;
+    }
+    if(moveIndex<currentLine.baseMoves&&moveIndex<currentLine.moves.length){
+      isAnimating=true;
+      var san=currentLine.moves[moveIndex];
+      var m=game.move(san);
+      if(!m){console.error('Invalid base move:',san,moveIndex,game.fen());moveIndex++;playBaseMoves();return}
+      updateMoveList(m,moveIndex);
+      board.position(game.fen(),false);
+      moveIndex++;
+      setTimeout(playBaseMoves,150);
+    }else{
+      isAnimating=false;
+      playNextAutoOrWait();
+    }
+  }
+
+  function playNextAutoOrWait(){
+    if(moveIndex>=currentLine.moves.length){finishLine();return}
+    var san=currentLine.moves[moveIndex];
+    var turnColor=moveIndex%2===0?'w':'b';
+    if(turnColor!==currentLine.playerColor){
+      isAnimating=true;
+      setTimeout(function(){
+        var m=game.move(san);
+        if(!m){console.error('Invalid auto move:',san,moveIndex,game.fen());finishLine();return}
+        board.position(game.fen());
+        highlightLastMove(m);
+        drawArrow(m.from,m.to,'rgba(255,170,0,0.8)');
+        Sound.play(m.captured?'capture':'move');
+        updateMoveList(m,moveIndex);
+        moveIndex++;isAnimating=false;
+        playNextAutoOrWait();
+      },400);
+    }else{
+      moveStartTime=Date.now();
+      setStatus('Your turn -- find the best move!','neutral');
+    }
+  }
+
+
+  function tryMove(source,target,expectedSan){
+    var testGame=new Chess(game.fen());
+    var expectedMove=testGame.move(expectedSan);
+    if(!expectedMove){console.error('Expected move invalid:',expectedSan,game.fen());return'snapback'}
+    testGame.undo();
+    var userMove=testGame.move({from:source,to:target,promotion:'q'});
+    if(!userMove)return'snapback';
+    lastUserAttempt=userMove.san;
+    playerMoveCount++;
+    // Track speed
+    if(moveStartTime>0){var elapsed=(Date.now()-moveStartTime)/1000;lineMoveTimeTotal+=elapsed;lineMoveCount++;sessionMoveTimeTotal+=elapsed;sessionMoveCount++;moveStartTime=0}
+    var isCorrect=userMove.san===expectedMove.san;
+    if(!isCorrect&&currentLine.flexible){
+      for(var fi=moveIndex+2;fi<currentLine.moves.length;fi+=2){
+        if(currentLine.moves[fi]===userMove.san){
+          currentLine.moves[fi]=expectedSan;
+          currentLine.moves[moveIndex]=userMove.san;
+          var tmpExp=currentLine.explanations[fi];
+          currentLine.explanations[fi]=currentLine.explanations[moveIndex];
+          currentLine.explanations[moveIndex]=tmpExp;
+          isCorrect=true;
+          break;
+        }
+      }
+    }
+    if(isCorrect){
+      game.move(userMove.san);
+      board.position(game.fen());
+      highlightLastMove(userMove);
+      updateMoveList(userMove,moveIndex);
+      playerCorrectCount++;sessionCorrect++;sessionTotal++;
+      moveIndex++;
+      Sound.play(userMove.captured?'capture':'move');
+      Sound.play('correct');
+      setStatus('Correct!','correct');
+      updateSessionStats();
+      $('#explanation-box').hide();
+      setTimeout(playNextAutoOrWait,500);
+      return;
+    }else{
+      sessionTotal++;
+      Sound.play('wrong');
+      var customExpl=getWrongMoveExplanation(currentLine.id,moveIndex,userMove.san);
+      if(customExpl){
+        setStatus(expectedSan+' is correct. '+customExpl,'wrong');
+        $('#explanation-box').text(customExpl).fadeIn(200);
+      }else{
+        setStatus('Not quite. The correct move is '+expectedSan,'wrong');
+      }
+      updateSessionStats();
+      showCorrectMoveOnBoard(expectedSan);
+      return'snapback';
+    }
+  }
+
+  function showCorrectMoveOnBoard(san){
+    var testGame=new Chess(game.fen());
+    var m=testGame.move(san);
+    if(m){highlightSquare(m.from,'highlight-hint');highlightSquare(m.to,'highlight-hint');drawArrow(m.from,m.to,'rgba(0,180,0,0.8)')}
+    setTimeout(function(){
+      clearHighlights();clearArrows();
+      game.move(san);
+      board.position(game.fen());
+      highlightLastMove(m);
+      Sound.play(m&&m.captured?'capture':'move');
+      updateMoveList(m||{san:san},moveIndex);
+      moveIndex++;
+      setTimeout(playNextAutoOrWait,600);
+    },1500);
+  }
+
+  function finishLine(){
+    var accuracy=playerMoveCount>0?Math.round((playerCorrectCount/playerMoveCount)*100):100;
+    var isPerfect=accuracy===100&&!hintUsed;
+    sessionCompleted++;
+    perfectStreak=isPerfect?perfectStreak+1:0;
+    var ls=updateLineStats(currentLine.id,playerMoveCount,playerCorrectCount);
+    var xpBase=isPerfect?100:accuracy>=70?60:30;
+    var streakBonus=Math.min(perfectStreak*5,50);
+    var hintPenalty=hintsUsedCount*10;
+    var xpEarned=Math.max(10,xpBase+streakBonus-hintPenalty);
+    checkDailyStreak();
+    var result=awardXP(xpEarned);
+    updateSessionStats();
+    updateXPDisplay();
+    updateDailyStreakDisplay();
+
+    Sound.play(isPerfect?'complete':'correct');
+
+    $('#result-title').text(isPerfect?'Perfect!':accuracy>=70?'Good effort!':'Keep practicing!');
+    $('#result-desc').text(currentLine.result);
+    $('#result-accuracy').text(accuracy+'%').attr('class','result-stat '+(isPerfect?'perfect':accuracy>=70?'good':'needs-work'));
+    var detail=playerCorrectCount+'/'+playerMoveCount+' moves correct';
+    if(lineMoveCount>0)detail+=' | Avg '+(lineMoveTimeTotal/lineMoveCount).toFixed(1)+'s/move';
+    if(hintUsed)detail+=' (hints used)';
+    if(ls.mastery>=3)detail+=' | MASTERED';
+    $('#result-detail').text(detail);
+
+    var xpMsg='+'+xpEarned+' XP';
+    if(streakBonus>0)xpMsg+=' (+'+streakBonus+' streak bonus)';
+    $('#xp-gained').text(xpMsg).addClass('show');
+    setTimeout(function(){$('#xp-gained').removeClass('show')},2000);
+
+    if(result.leveledUp){
+      $('#level-up').show();
+      $('#levelup-title').text('Level Up! '+LEVELS[result.newLevel].name);
+      $('#levelup-desc').text('Level '+(result.newLevel+1)+' reached!');
+    }else{
+      $('#level-up').hide();
+    }
+
+    var statusMsg=isPerfect?'Perfect! '+xpMsg:accuracy>=70?'Good! '+xpMsg:'Keep practicing. '+xpMsg;
+    setStatus(statusMsg,isPerfect?'correct':accuracy>=70?'info':'wrong');
+    // Show OK/Report buttons instead of auto-advancing — let user confirm last move
+    $('#drill-controls').html('<button class="btn-next" onclick="app.nextLine()" style="flex:1;padding:14px;font-size:1em">OK</button><button class="btn-report" onclick="app.reportError();app.nextLine()" style="flex:1;padding:14px;font-size:.9em">Report &amp; Next</button>').show();
+    $('#result-screen').fadeIn(200);
+  }
+
+  function hint(){
+    if(isAnimating||!currentLine||moveIndex>=currentLine.moves.length)return;
+    if((moveIndex%2===0?'w':'b')!==currentLine.playerColor)return;
+    hintUsed=true;hintsUsedCount++;
+    var san=currentLine.moves[moveIndex];
+    var testGame=new Chess(game.fen());
+    var m=testGame.move(san);
+    if(m){highlightSquare(m.from,'highlight-hint');highlightSquare(m.to,'highlight-hint');setStatus('Hint: '+san,'info')}
+  }
+
+  function explain(){
+    if(!currentLine)return;
+    var idx=moveIndex;
+    if(idx>=currentLine.moves.length)idx=currentLine.moves.length-1;
+    if((idx%2===0?'w':'b')!==currentLine.playerColor&&idx>0)idx--;
+    var exp=currentLine.explanations[idx];
+    $('#explanation-box').text(exp||'No explanation for this move.').fadeIn(200);
+  }
+
+  function nextLine(){startDrill()}
+  function retryLine(){startDrill(currentLine)}
+
+  function undo(){
+    if(isAnimating||!currentLine||moveIndex<=currentLine.baseMoves)return;
+    // Undo back to the last position where it was the player's turn
+    // Need to undo: the opponent's last auto-move + the player's last move
+    var stepsBack=0;
+    // If it's currently the player's turn, undo player's last move + opponent's move before it
+    var turnColor=moveIndex%2===0?'w':'b';
+    if(turnColor===currentLine.playerColor){
+      // Player's turn: undo opponent auto-move + player's move = 2 moves
+      if(moveIndex>=2){game.undo();game.undo();moveIndex-=2;stepsBack=2}
+    }else{
+      // Opponent's turn (waiting for auto): undo just player's last move
+      if(moveIndex>=1){game.undo();moveIndex-=1;stepsBack=1}
+    }
+    if(stepsBack>0){
+      clearHighlights();clearArrows();selectedSquare=null;
+      board.position(game.fen());
+      // Rebuild move list
+      $('#move-list').html('');
+      var tempGame=new Chess();
+      for(var i=0;i<moveIndex;i++){
+        var m=tempGame.move(currentLine.moves[i]);
+        if(m)updateMoveList(m,i);
+      }
+      moveStartTime=Date.now();
+      setStatus('Undone. Try again!','info');
+    }
+  }
+
+  var SUPABASE_URL='https://oomuupminexahfipgktd.supabase.co';
+  var SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vbXV1cG1pbmV4YWhmaXBna3RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMDE4MzAsImV4cCI6MjA4OTY3NzgzMH0.SrOKNj7mh_UtP_6PdWx4G7gwR98ya56xL_6e0k3Hxrk';
+  // Local wrong-move feedback (anon key is RLS-blocked from writing move_explanations,
+  // so engine-verified explanations are seeded here; cloud rows merge on top).
+  var moveExplanations={
+    'ponz-countergambit-deep|8|d4':'d4? loses a pawn: ...dxe4 hits the f3-knight and the e4 pawn falls (engine -1.4). Bb5 keeps the pin and the balance.',
+    'ponz-countergambit-deep|14|c4':'c4? loses to ...Qe4+! The check forks the king and the d4 pawn (engine -1.1). Castle first -- O-O is the engine-best move here.',
+    'ponz-countergambit-f6|8|d4':'d4? loses a pawn: ...dxe4 hits the f3-knight and the e4 pawn falls (engine -1.4). Bb5 keeps the pin and the balance.',
+    'ponz-bc5-trap|10|Qa4':'Qa4?? (the old line!) now loses to ...Nxf2! forking queen and rook (engine -2.9). Just take the knight: dxc6.',
+    'ponz-beginner-qf6|14|Bd3':'Bd3?? (the old line!) hangs material: ...Bxc3+ bxc3 Qxc3+ hits the king AND the d3-bishop; after the forced Qd2 block, ...Qxa1 grabs the rook (engine -1.3). Be2 sidesteps everything.',
+    'ponz-deviation-sicilian|16|Nbd2':'Nbd2 (the old line) lets Black equalize completely (engine 0.0). dxc5! trades queens and keeps a small, risk-free pull (+0.5).',
+    'ponz-waiting-a6|10|Bg5':'Bg5? (the old line) loses the thread: ...Nxe4! then ...g5 and Black takes over (engine -0.8). Nxe5! just wins the hanging pawn (+0.9) -- ...a6 left e5 undefended.',
+    'ponz-leonhardt|12|e5':'e5? (the old line) loses the extra pawn to ...Bxe5! -- the bishop simply takes (engine -1.0). d3 protects e4 and consolidates (+0.2 and a clean pawn up).',
+    'ponz-gotham-bg5-nontrap|12|Bh4':'Bh4? (the old line) walks into ...g5 Bg3 h5! -- the bishop gets buried and Black attacks (engine -1.0). Bxf6! takes the structural win: doubled f-pawns.',
+    'ponz-d6-d5-bg5-safe|12|Bh4':'Bh4? (the old line) walks into ...g5 Bg3 h5! -- the bishop gets buried and Black attacks (engine -1.0). Bxf6! takes the structural win: doubled f-pawns.',
+    'hippo-vs-bh6|17|Ne7':'...Ne7? first (the old line) lets White play dxe6! fxe6 Ng5 with a big edge (+1.8). Capture ...exd5 the MOMENT the pawn arrives -- then ...Ne7.',
+    'ponz-main-nxe4|12|Bd3':'Bd3? (the old line) is refuted by ...Nxe5! -- the g6 knight just takes (engine -0.25). Nxg6! FIRST (Gotham\'s move), then Qf3 threatens mate on f7 (+0.42).',
+    'ponz-main-deep|12|Bd3':'Bd3? (the old line) is refuted by ...Nxe5! -- the g6 knight just takes (engine -0.25). Nxg6! FIRST (Gotham\'s move), then Qf3 threatens mate on f7 (+0.42).',
+    'ponz-main-nxe4|14|Qd4':'Qd4 (the old line) is playable but Qf3! is stronger: it threatens Qxf7# MATE and the e4-knight at once.',
+    'hippo-vs-e4-e5-push|9|d5':'...d5? locking (the old line) leaves White +1.7 in a worse French. Capture ...dxe5! -- queens trade and Black is dead equal.',
+    'hippo-vs-e4-e5-deep-c5|9|d5':'...d5? locking (the old line) leaves White +1.7 in a worse French. Capture ...dxe5! -- queens trade and Black is dead equal.',
+    'hippo-vs-d4-e5-push|15|d5':'...d5? locking (the old line) gives White a lasting space pull. Capture ...dxe5! -- the e5 pawn becomes a weakness and Black is already slightly better.',
+    'hippo-c5-break|15|d5':'...d5? locking (the old line) concedes space for nothing. Capture ...dxe5! -- e5 becomes a fixed weakness (engine slightly prefers Black).'
+  };
+
+  function loadExplanations(){
+    fetch(SUPABASE_URL+'/rest/v1/move_explanations?select=line_id,move_index,wrong_move,explanation',{
+      headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON}
+    }).then(function(r){return r.json()}).then(function(data){
+      data.forEach(function(e){
+        var key=e.line_id+'|'+e.move_index+'|'+e.wrong_move;
+        moveExplanations[key]=e.explanation;
+      });
+    }).catch(function(){});
+  }
+
+  function getWrongMoveExplanation(lineId,moveIdx,wrongSan){
+    return moveExplanations[lineId+'|'+moveIdx+'|'+wrongSan]||null;
+  }
+
+  function reportError(){
+    if(!currentLine)return;
+    var report={
+      line_id:currentLine.id,
+      line_name:currentLine.name,
+      move_index:moveIndex,
+      fen:game.fen(),
+      expected_move:moveIndex<currentLine.moves.length?currentLine.moves[moveIndex]:'(end)',
+      user_played:lastUserAttempt||'(none)',
+      moves_played:currentLine.moves.slice(0,moveIndex).join(' '),
+      status:'pending'
+    };
+    // Save locally
+    var errors=[];
+    try{errors=JSON.parse(localStorage.getItem('chess-trainer-errors'))||[]}catch(e){}
+    errors.push(report);
+    localStorage.setItem('chess-trainer-errors',JSON.stringify(errors));
+    // Send to Supabase (CORS-friendly, fire-and-forget)
+    fetch(SUPABASE_URL+'/rest/v1/error_reports',{
+      method:'POST',headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON,'Content-Type':'application/json'},
+      body:JSON.stringify(report)
+    }).then(function(){setStatus('Reported & synced!','correct')}).catch(function(){setStatus('Reported locally!','info')});
+    Sound.play('correct');
+  }
+
+  function showErrorLog(){
+    var el=$('#error-log');
+    if(el.is(':visible')){el.slideUp(200);return}
+    var errors=[];
+    try{errors=JSON.parse(localStorage.getItem('chess-trainer-errors'))||[]}catch(e){}
+    // Also load resolutions
+    var resolutions={};
+    try{resolutions=JSON.parse(localStorage.getItem('chess-trainer-resolutions'))||{}}catch(e){}
+    if(!errors.length&&!Object.keys(resolutions).length){$('#error-list').html('<div style="padding:8px;color:#666">No errors reported yet.</div>');el.slideDown(200);return}
+    var html='';
+    // Show resolutions first (processed errors)
+    var resKeys=Object.keys(resolutions);
+    if(resKeys.length){
+      html+='<div style="color:#00e676;font-size:.8em;font-weight:600;margin:6px 0">Processed</div>';
+      resKeys.forEach(function(k){
+        var r=resolutions[k];
+        var color=r.wasError?'#ffd700':'#00e676';
+        var icon=r.wasError?'Fixed':'Not a bug';
+        html+='<div style="background:#16213e;padding:8px;margin:3px 0;border-radius:6px;border-left:3px solid '+color+'">';
+        html+='<div style="color:'+color+';font-weight:600;font-size:.85em">'+icon+': '+r.lineName+'</div>';
+        html+='<div style="color:#aaa;font-size:.8em">'+r.explanation+'</div>';
+        html+='</div>';
+      });
+    }
+    // Show pending errors
+    var pending=errors.filter(function(e){return e.status==='pending'});
+    if(pending.length){
+      html+='<div style="color:#ff8a80;font-size:.8em;font-weight:600;margin:6px 0">Pending Review ('+pending.length+')</div>';
+    }
+    errors.forEach(function(e,i){
+      if(e.status!=='pending')return;
+      html+='<div style="background:#16213e;padding:8px;margin:3px 0;border-radius:6px;border-left:3px solid #ff8a80">';
+      html+='<div style="color:#ff8a80;font-weight:600;font-size:.85em">#'+(i+1)+' '+e.lineName+'</div>';
+      html+='<div style="font-size:.8em">Move '+e.moveIndex+' | Expected: <b>'+e.expectedMove+'</b></div>';
+      html+='<div style="color:#666;font-size:.75em">'+e.movesPlayed+'</div>';
+      html+='<div style="color:#555;font-size:.7em">'+e.timestamp.slice(0,16).replace('T',' ')+'</div>';
+      html+='</div>';
+    });
+    if(!pending.length&&!resKeys.length)html+='<div style="padding:8px;color:#666">All clear!</div>';
+    $('#error-list').html(html);
+    el.slideDown(200);
+  }
+
+  function shareErrors(){
+    var errors=[];
+    try{errors=JSON.parse(localStorage.getItem('chess-trainer-errors'))||[]}catch(e){}
+    var pending=errors.filter(function(e){return e.status==='pending'});
+    if(!pending.length){setStatus('No pending errors to share.','info');return}
+    var text='Chess Trainer Error Reports:\n\n';
+    pending.forEach(function(e,i){
+      text+='#'+(i+1)+' '+e.lineName+'\n';
+      text+='Move '+e.moveIndex+' | Expected: '+e.expectedMove+'\n';
+      text+='Moves: '+e.movesPlayed+'\n';
+      text+='FEN: '+e.fen+'\n\n';
+    });
+    if(navigator.share){
+      navigator.share({title:'Chess Trainer Errors',text:text}).catch(function(){});
+    }else{
+      navigator.clipboard.writeText(text).then(function(){setStatus('Copied to clipboard!','correct')}).catch(function(){
+        // Fallback: select all in a textarea
+        var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+        setStatus('Copied to clipboard!','correct');
+      });
+    }
+  }
+
+  function clearErrors(){
+    localStorage.removeItem('chess-trainer-errors');
+    localStorage.removeItem('chess-trainer-resolutions');
+    $('#error-list').html('<div style="padding:8px;color:#666">Cleared.</div>');
+  }
+
+  function showLineSelector(){
+    if(lineSelectMode){hideLineSelector();return}
+    lineSelectMode=true;
+    var lines=getLines();
+    var cats=CATEGORIES[currentOpening]||[];
+    var openingLabel=currentOpening==='mix'?'Mix':(currentOpening==='ponziani'?'Ponziani':(currentOpening==='hippo'?'Hippo':'Tactics'));
+    var html='<h3>'+openingLabel+' Lines ('+lines.length+')</h3>';
+    function renderLine(l){
+      var ls=getLineStats(l.id);
+      var acc=ls.attempts>0?Math.round((ls.perfect/ls.attempts)*100)+'% perfect':'New';
+      var stars=ls.mastery>=3?'***':ls.mastery>=2?'**':ls.mastery>=1?'*':'';
+      html+='<div class="line-item'+(l.isTrap?' trap':'')+'" onclick="app.selectLine(\''+l.id+'\')">';
+      html+='<div class="line-info"><div class="line-title">'+l.name+'</div>';
+      if(l.isTrap)html+='<span class="line-tag">TRAP</span>';
+      html+='</div>';
+      if(stars)html+='<span class="stars">'+stars+'</span>';
+      html+='<span class="line-acc">'+acc+'</span></div>';
+    }
+    if(cats.length){
+      // Ponziani/Hippo: group by their own sub-categories (main/trap/... or vs-e4/threats/...).
+      cats.forEach(function(cat){
+        var catLines=lines.filter(function(l){return l.cat===cat.key});
+        if(!catLines.length)return;
+        html+='<div class="cat-label">'+cat.label+' ('+catLines.length+')</div>';
+        catLines.forEach(renderLine);
+      });
+    }else{
+      // Only 'mix' ever reaches here in practice -- CATEGORIES has a real entry for
+      // ponziani/hippo/tactics, so each of those tabs already takes the cats.forEach
+      // branch above. 'mix' has no CATEGORIES entry of its own (correctly: its 65
+      // lines span three vocabularies that aren't the same axis -- Ponziani's 'trap'
+      // vs Hippo's 'threats' vs Tactics' 'blunder'/'missed-win'), so cats.length is 0
+      // and without this branch the menu would silently render nothing at all for
+      // Mix specifically. Group by opening instead of leaving it empty or dumping an
+      // unlabelled wall of 65 items.
+      var openingGroupLabel={ponziani:'Ponziani',hippo:'Hippo',tactics:'Tactics'};
+      ['ponziani','hippo','tactics'].forEach(function(op){
+        var opLines=lines.filter(function(l){return l.opening===op});
+        if(!opLines.length)return;
+        if(currentOpening==='mix')html+='<div class="cat-label">'+openingGroupLabel[op]+' ('+opLines.length+')</div>';
+        opLines.forEach(renderLine);
+      });
+    }
+    $('#line-selector').html(html).slideDown(200);
+  }
+
+  function hideLineSelector(){lineSelectMode=false;$('#line-selector').slideUp(200)}
+
+  function selectLine(id){
+    var line=ALL_LINES.find(function(l){return l.id===id});
+    if(line)startDrill(line);
+  }
+
+  var defaultControls='<button class="btn-hint" onclick="app.hint()">Hint</button><button class="btn-explain" onclick="app.explain()">Why?</button><button class="btn-undo" onclick="app.undo()">Undo</button><button class="btn-menu" onclick="app.showLineSelector()">Lines</button><button class="btn-report" onclick="app.reportError()">Report</button><button class="btn-report" onclick="app.showErrorLog()">Errors</button>';
+  function hideResult(){$('#result-screen').hide();$('#drill-controls').html(defaultControls).show()}
+
+  function setStatus(msg,cls){$('#status').text(msg).attr('class',cls||'neutral')}
+
+  function highlightSquare(sq,cls){$('#board .square-55d63[data-square="'+sq+'"]').addClass(cls)}
+  function highlightLastMove(m){clearHighlights();if(m){highlightSquare(m.from,'highlight-last');highlightSquare(m.to,'highlight-last')}}
+  function clearHighlights(){clearArrows();$('#board .square-55d63').removeClass('highlight-last highlight-hint highlight-selected highlight-legal highlight-legal-capture')}
+
+  function updateMoveList(m,idx){
+    var list=$('#move-list');
+    var num=Math.floor(idx/2)+1;
+    var san=m.san||m;
+    if(idx%2===0)list.append('<span class="move-number">'+num+'.</span> <span class="white-move">'+san+'</span> ');
+    else list.append('<span class="black-move">'+san+'</span> ');
+    list.scrollTop(list[0].scrollHeight);
+  }
+
+  function updateSessionStats(){
+    var acc=sessionTotal>0?Math.round((sessionCorrect/sessionTotal)*100):0;
+    $('#stat-accuracy').text(sessionTotal>0?acc+'%':'--');
+    $('#stat-completed').text(sessionCompleted);
+    $('#stat-streak').text(perfectStreak);
+    $('#accuracy-fill').css('width',(sessionTotal>0?acc:0)+'%');
+    $('#stat-speed').text(sessionMoveCount>0?(sessionMoveTimeTotal/sessionMoveCount).toFixed(1)+'s/move':'--');
+  }
+
+  function updateXPDisplay(){
+    var p=loadProfile();
+    var lvl=getLevel(p.xp);
+    var nextLvl=lvl<LEVELS.length-1?LEVELS[lvl+1].xp:LEVELS[lvl].xp;
+    var currLvlXP=LEVELS[lvl].xp;
+    var progress=nextLvl>currLvlXP?Math.round(((p.xp-currLvlXP)/(nextLvl-currLvlXP))*100):100;
+    $('#level-num').text(lvl+1);
+    $('#level-name').text(LEVELS[lvl].name);
+    $('#xp-fill').css('width',progress+'%');
+    $('#xp-text').text(p.xp+' / '+nextLvl+' XP');
+  }
+
+  function updateDailyStreakDisplay(){
+    var p=loadProfile();
+    if(p.dailyStreak>1){
+      $('#streak-badge').show();
+      $('#streak-count').text(p.dailyStreak);
+    }else{
+      $('#streak-badge').hide();
+    }
+  }
+
+  $(document).ready(function(){init()});
+
+  return{switchOpening:switchOpening,hint:hint,explain:explain,nextLine:nextLine,retryLine:retryLine,showLineSelector:showLineSelector,selectLine:selectLine,undo:undo,reportError:reportError,showErrorLog:showErrorLog,shareErrors:shareErrors,clearErrors:clearErrors};
+})();
+</script>
+</body>
+</html>
