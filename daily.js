@@ -6,6 +6,7 @@
   var DAY_SIZE = 10;
   var NEW_POOL_PER_DAY = 5;   // fresh Lichess puzzles every day, never eaten by reviews
   var MAX_REVIEWS_PER_DAY = 2;
+  var MAX_OPENINGS_PER_DAY = 2; // spots where real games left the book (opening-drills.js)
   var REVIEW_AFTER_DAYS = 3;  // a missed pool puzzle comes back this many days later
   var OWN_FIRST_GAP = 3;      // own-game puzzle solved: back in 3 days, then 6, 12...
   var OWN_MAX_GAP = 60;
@@ -118,9 +119,11 @@
   }
 
   // Today's set, built once per day and kept (reopening never reshuffles):
-  // up to 2 due reviews + 5 new pool puzzles + own-game puzzles that are due,
-  // topped up with more new pool puzzles to 10.
-  function ensureToday(state, pool, own, today) {
+  // up to 2 due reviews + 5 new pool puzzles + up to 2 due opening drills +
+  // own-game puzzles that are due, topped up with more new pool puzzles to 10.
+  // Opening drills are spaced exactly like own-game puzzles (kind 'own').
+  function ensureToday(state, pool, own, today, openings) {
+    openings = openings || [];
     if (state.day === today && state.set.length) return state;
     if (state.day && state.day !== today) {
       // Unfinished new pool puzzles from an earlier day are served first, not skipped.
@@ -138,9 +141,17 @@
       .slice(0, MAX_REVIEWS_PER_DAY).forEach(function (id) { add(id, 'pool'); });
     takeNewPool(state, pool, NEW_POOL_PER_DAY, taken).forEach(function (id) { add(id, 'pool'); });
 
-    var ownDue = own.map(function (o, i) { return { id: o.id, i: i, next: (state.own[o.id] || {}).next || '' }; })
-      .filter(function (o) { return o.next <= today && !taken[o.id]; })
-      .sort(function (a, b) { return a.next < b.next ? -1 : a.next > b.next ? 1 : a.i - b.i; });
+    function dueOf(list) {
+      return list.map(function (o, i) { return { id: o.id, i: i, next: (state.own[o.id] || {}).next || '' }; })
+        .filter(function (o) { return o.next <= today && !taken[o.id]; })
+        // Ones already seen and due come first (oldest due date first), then never-seen ones in file order.
+        .sort(function (a, b) {
+          if (!a.next !== !b.next) return a.next ? -1 : 1;
+          return a.next < b.next ? -1 : a.next > b.next ? 1 : a.i - b.i;
+        });
+    }
+    dueOf(openings).slice(0, MAX_OPENINGS_PER_DAY).forEach(function (o) { if (set.length < DAY_SIZE) add(o.id, 'own'); });
+    var ownDue = dueOf(own);
     for (var j = 0; j < ownDue.length && set.length < DAY_SIZE; j++) add(ownDue[j].id, 'own');
     if (set.length < DAY_SIZE) takeNewPool(state, pool, DAY_SIZE - set.length, taken).forEach(function (id) { add(id, 'pool'); });
 

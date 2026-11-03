@@ -170,6 +170,7 @@ h1{font-size:1.1em;margin-bottom:6px;color:#e94560}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
 <script src="tactics-puzzles.js"></script>
+<script src="opening-drills.js"></script>
 <script src="daily.js"></script>
 <script src="daily-pool.js"></script>
 <script src="push-config.js"></script>
@@ -399,7 +400,9 @@ L('hippo-b5-expand','Middlegame: ...b5 Queenside Expansion','Lock the center, th
 var ALL_LINES=[].concat(
   PONZIANI_LINES.map(function(l){l.opening='ponziani';l.playerColor='w';if(!l.baseMoves)l.baseMoves=5;return l}),
   HIPPO_LINES.map(function(l){l.opening='hippo';l.playerColor='b';l.baseMoves=4;l.flexible=true;return l}),
-  (typeof TACTICS_PUZZLES!=='undefined'?TACTICS_PUZZLES:[]).map(function(l){l.opening='tactics';return l})
+  (typeof TACTICS_PUZZLES!=='undefined'?TACTICS_PUZZLES:[]).map(function(l){l.opening='tactics';return l}),
+  // Spots where real games left the Ponziani/Hippo lines (test/build-opening-drills.js).
+  (typeof OPENING_DRILLS!=='undefined'?OPENING_DRILLS:[]).map(function(l){l.opening='drill';return l})
 );
 
 // ===================== CATEGORIES =====================
@@ -700,7 +703,7 @@ var app=(function(){
     // move-by-move at 150ms each would take 15+ seconds just to reach the
     // puzzle. Jump straight to the position instead; opening lines keep the
     // animated walk-through since it's short and pedagogically useful there.
-    if(currentLine.opening==='tactics'){
+    if(currentLine.opening==='tactics'||currentLine.opening==='drill'){
       isAnimating=true;
       while(moveIndex<currentLine.baseMoves&&moveIndex<currentLine.moves.length){
         var san=currentLine.moves[moveIndex];
@@ -1101,8 +1104,8 @@ var app=(function(){
       // and without this branch the menu would silently render nothing at all for
       // Mix specifically. Group by opening instead of leaving it empty or dumping an
       // unlabelled wall of 65 items.
-      var openingGroupLabel={ponziani:'Ponziani',hippo:'Hippo',tactics:'Tactics'};
-      ['ponziani','hippo','tactics'].forEach(function(op){
+      var openingGroupLabel={ponziani:'Ponziani',hippo:'Hippo',tactics:'Tactics',drill:'Your opening spots'};
+      ['ponziani','hippo','tactics','drill'].forEach(function(op){
         var opLines=lines.filter(function(l){return l.opening===op});
         if(!opLines.length)return;
         if(currentOpening==='mix')html+='<div class="cat-label">'+openingGroupLabel[op]+' ('+opLines.length+')</div>';
@@ -1188,6 +1191,7 @@ var app=(function(){
   function saveDaily(st){try{localStorage.setItem(DAILY_KEY,JSON.stringify(st))}catch(e){}}
   function dailyPool(){return typeof DAILY_POOL!=='undefined'?DAILY_POOL:[]}
   function ownPuzzles(){return ALL_LINES.filter(function(l){return l.opening==='tactics'})}
+  function openingDrills(){return ALL_LINES.filter(function(l){return l.opening==='drill'})}
   function lineById(id){
     var pool=dailyPool();
     for(var i=0;i<pool.length;i++)if(pool[i].id===id)return pool[i];
@@ -1195,7 +1199,7 @@ var app=(function(){
     return null;
   }
   function todayState(){
-    var st=Daily.ensureToday(loadDaily(),dailyPool(),ownPuzzles(),Daily.streakDay());
+    var st=Daily.ensureToday(loadDaily(),dailyPool(),ownPuzzles(),Daily.streakDay(),openingDrills());
     saveDaily(st);
     return st;
   }
