@@ -31,27 +31,90 @@
 
   function emptyState() {
     return { day: null, set: [], kind: {}, done: {}, cursor: 0, carry: [], due: {}, own: {},
-      streak: 0, best: 0, lastDone: null, history: {} };
+      seen: {}, themes: {}, credit: {}, streak: 0, best: 0, lastDone: null, history: {} };
   }
 
-  // Takes the next n pool ids not already in `taken`: first the ones carried
-  // over unfinished from the previous day, then onward from the cursor (one
-  // full pass at most, so a tiny pool can't loop forever).
+  // How much each theme is served. The pool is built in proportion to the
+  // measured leaks in real games (test/build-daily-pool.js), so a theme's share
+  // of the pool is its base weight; it is then scaled by how often that theme is
+  // missed here (smoothed, recent results count most), so whatever you get
+  // wrong comes up more. A theme you always solve keeps a small floor share.
+  var MISS_FLOOR = 0.2;
+  var THEME_MEMORY = 30; // results beyond this many per theme fade out
+
+  function themeOf(p) { return p.cat || 'other'; }
+
+  function themeWeights(state, pool) {
+    var w = {};
+    pool.forEach(function (p) { var t = themeOf(p); w[t] = (w[t] || 0) + 1; });
+    Object.keys(w).forEach(function (t) {
+      var r = state.themes[t] || { n: 0, miss: 0 };
+      w[t] *= MISS_FLOOR + (r.miss + 1) / (r.n + 2);
+    });
+    return w;
+  }
+
+  // Older saved states served the pool in file order with one cursor: treat
+  // everything before it as already seen so nothing repeats after the update.
+  function migrate(state, pool) {
+    if (!state.seen) {
+      state.seen = {};
+      for (var i = 0; i < Math.min(state.cursor || 0, pool.length); i++) state.seen[pool[i].id] = true;
+    }
+    if (!state.themes) state.themes = {};
+    if (!state.credit) state.credit = {};
+  }
+
+  // Takes n pool ids not already in `taken`: first the ones carried over
+  // unfinished from the previous day, then one theme at a time by weight
+  // (smooth weighted round-robin, so the mix holds across days, not just
+  // within one), each theme served in pool order.
   function takeNewPool(state, pool, n, taken) {
+    migrate(state, pool);
     var out = [];
     var poolIds = {};
     pool.forEach(function (p) { poolIds[p.id] = true; });
     while (state.carry.length && out.length < n) {
       var c = state.carry.shift();
-      if (poolIds[c] && !taken[c]) { out.push(c); taken[c] = true; }
+      if (poolIds[c] && !taken[c]) { out.push(c); taken[c] = true; state.seen[c] = true; }
     }
-    for (var tries = 0; out.length < n && tries < pool.length; tries++) {
-      if (state.cursor >= pool.length) state.cursor = 0; // pool exhausted: start over
-      var id = pool[state.cursor].id;
-      state.cursor++;
-      if (!taken[id] && !(id in state.due)) { out.push(id); taken[id] = true; }
+    function free(p) { return !taken[p.id] && !state.seen[p.id] && !(p.id in state.due); }
+    var weights = themeWeights(state, pool);
+    var wrapped = false;
+    while (out.length < n) {
+      var open = {};
+      pool.forEach(function (p) { if (free(p)) open[themeOf(p)] = true; });
+      var themes = Object.keys(open);
+      if (!themes.length) {
+        if (wrapped) break;
+        wrapped = true; // whole pool served: start over (reviews and today's set still excluded)
+        state.seen = {};
+        continue;
+      }
+      var total = 0, best = null;
+      themes.forEach(function (t) {
+        state.credit[t] = (state.credit[t] || 0) + weights[t];
+        total += weights[t];
+        if (best === null || state.credit[t] > state.credit[best]) best = t;
+      });
+      state.credit[best] -= total;
+      for (var i = 0; i < pool.length; i++) {
+        if (themeOf(pool[i]) === best && free(pool[i])) {
+          out.push(pool[i].id); taken[pool[i].id] = true; state.seen[pool[i].id] = true;
+          break;
+        }
+      }
     }
     return out;
+  }
+
+  function recordTheme(state, theme, solved) {
+    if (!state.themes) state.themes = {};
+    var r = state.themes[theme] || { n: 0, miss: 0 };
+    if (r.n >= THEME_MEMORY) { r.miss *= (THEME_MEMORY - 1) / r.n; r.n = THEME_MEMORY - 1; }
+    r.n += 1;
+    if (!solved) r.miss += 1;
+    state.themes[theme] = r;
   }
 
   // Today's set, built once per day and kept (reopening never reshuffles):
@@ -111,11 +174,13 @@
 
   // Records one finished puzzle against the set's own day (so a puzzle finished
   // just after the day flips still counts for the set it belongs to). Returns
-  // true when this completed the day's first 10.
-  function recordResult(state, id, solved) {
+  // true when this completed the day's first 10. `theme` (a pool puzzle's cat)
+  // feeds the weighted mix; leave it out for a skipped puzzle.
+  function recordResult(state, id, solved, theme) {
     if (!state.day || state.set.indexOf(id) < 0 || id in state.done) return false;
     var day = state.day;
     state.done[id] = !!solved;
+    if (theme && state.kind[id] === 'pool') recordTheme(state, theme, solved);
     if (state.kind[id] === 'own') {
       var o = state.own[id] || { gap: 0 };
       o.gap = solved ? Math.min(OWN_MAX_GAP, o.gap ? o.gap * 2 : OWN_FIRST_GAP) : 0;

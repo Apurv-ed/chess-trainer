@@ -1203,13 +1203,13 @@ var app=(function(){
   function todayNextLine(){
     var st=todayState();
     var id=Daily.nextPuzzleId(st);
-    while(id&&!lineById(id)){Daily.recordResult(st,id,true,st.day);id=Daily.nextPuzzleId(st)} // skip a puzzle that no longer exists
+    while(id&&!lineById(id)){Daily.recordResult(st,id,true);id=Daily.nextPuzzleId(st)} // skip a puzzle that no longer exists
     saveDaily(st);
     return id?lineById(id):null;
   }
   function recordTodayResult(solved){
     var st=loadDaily();
-    var finished=Daily.recordResult(st,currentLine.id,solved);
+    var finished=Daily.recordResult(st,currentLine.id,solved,currentLine.cat);
     saveDaily(st);
     if(finished)logDayToCloud(st,st.day);
     updateTodayBar();updateDailyStreakDisplay();
