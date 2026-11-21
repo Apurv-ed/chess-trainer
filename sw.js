@@ -4,8 +4,8 @@
 self.addEventListener('push', function (event) {
   var data = {};
   try { data = event.data ? event.data.json() : {}; } catch (e) {}
-  event.waitUntil(self.registration.showNotification(data.title || 'Chess: your 10 puzzles', {
-    body: data.body || "Do today's 10 puzzles or you'll lose your streak.",
+  event.waitUntil(self.registration.showNotification(data.title || 'Chess: your daily puzzles', {
+    body: data.body || "Do today's puzzles or you'll lose your streak.",
     icon: 'img/pieces/wN.png',
     badge: 'img/pieces/wN.png',
     tag: 'daily-reminder',

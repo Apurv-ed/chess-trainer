@@ -1169,7 +1169,7 @@ var app=(function(){
     $('#xp-text').text(p.xp+' / '+nextLvl+' XP');
   }
 
-  // The streak shown is the Today streak (finished all 10 puzzles that day),
+  // The streak shown is the Today streak (finished the whole daily set that day),
   // the one habit the training plan rests on. The old open-the-app streak in
   // the profile is no longer shown.
   function updateDailyStreakDisplay(){
@@ -1231,7 +1231,8 @@ var app=(function(){
     var st=todayState();
     var pr=Daily.progress(st);
     var n=Daily.streakFor(st,st.day);
-    var line=Daily.dayFinished(st)?(pr.done>=pr.total?'Done for today':'Extra: '+(pr.done-Daily.DAY_SIZE)+' / '+(pr.total-Daily.DAY_SIZE)):'Today: '+pr.done+' / '+Math.min(pr.total,Daily.DAY_SIZE);
+    var base=(st.history[st.day]||{}).done||Daily.DAY_SIZE; // a day built with the old 10-puzzle set keeps its own size
+    var line=Daily.dayFinished(st)?(pr.done>=pr.total?'Done for today':'Extra: '+(pr.done-base)+' / '+(pr.total-base)):'Today: '+pr.done+' / '+Math.min(pr.total,Daily.DAY_SIZE);
     var sub=n>0?'Streak: '+n+' day'+(n===1?'':'s')+' · best '+st.best:(st.best>0?'Finish all '+pr.total+' to start a new streak · best '+st.best:'Finish all '+pr.total+' to start your streak');
     $('#today-bar').html(line+'<span class="sub">'+sub+'</span>').show();
     updateReminderRow();
@@ -1251,7 +1252,7 @@ var app=(function(){
   }
   function moreToday(){
     var st=todayState();
-    Daily.addMore(st,dailyPool(),Daily.DAY_SIZE);
+    Daily.addMore(st,dailyPool(),10);
     saveDaily(st);
     startDrill();
   }
@@ -1281,7 +1282,7 @@ var app=(function(){
     if(currentOpening!=='today'||!pushSupported()){$('#reminder-row').hide();return}
     var on=Notification.permission==='granted'&&(function(){try{return localStorage.getItem('chess-trainer-reminder')==='on'}catch(e){return false}})();
     $('#reminder-btn').toggle(!on);
-    $('#reminder-msg').text(on?'Reminder on: 6pm Dubai, only if today\'s 10 aren\'t done.':'');
+    $('#reminder-msg').text(on?'Reminder on: 6pm Dubai, only if today\'s puzzles aren\'t done.':'');
     $('#reminder-row').show();
   }
   function urlB64ToUint8(b64){

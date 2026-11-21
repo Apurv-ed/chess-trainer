@@ -1,9 +1,9 @@
-// daily.js -- the "Today" routine: which 10 puzzles to serve today, and the
+// daily.js -- the "Today" routine: which puzzles to serve today, and the
 // streak. Pure functions over a plain state object; index.html stores the state
 // in localStorage, test/daily.test.js runs these same functions in Node.
 // Served on the public site (no personal data in here).
 (function (root) {
-  var DAY_SIZE = 10;
+  var DAY_SIZE = 15; // was 10 until 2026-11-21 (owner asked for more; leaves about 6 slots a day for own-game puzzles)
   var NEW_POOL_PER_DAY = 5;   // fresh Lichess puzzles every day, never eaten by reviews
   var MAX_REVIEWS_PER_DAY = 2;
   var MAX_OPENINGS_PER_DAY = 2; // spots where real games left the book (opening-drills.js)
@@ -162,7 +162,7 @@
     return state;
   }
 
-  // After the 10, "10 more" adds fresh pool puzzles to the same day (no effect on the streak).
+  // After the set, "10 more" adds fresh pool puzzles to the same day (no effect on the streak).
   function addMore(state, pool, n) {
     var taken = {};
     state.set.forEach(function (id) { taken[id] = true; });
@@ -185,10 +185,10 @@
 
   // Records one finished puzzle against the set's own day (so a puzzle finished
   // just after the day flips still counts for the set it belongs to). Returns
-  // true when this completed the day's first 10. `theme` (a pool puzzle's cat)
+  // true when this completed the day's set (DAY_SIZE). `theme` (a pool puzzle's cat)
   // feeds the weighted mix; leave it out for a skipped puzzle.
   // `type` (optional, e.g. 'pool_easy', 'own_missed_win', 'opening') feeds a per-type
-  // tally for the day's first 10, so accuracy can be read per kind of puzzle.
+  // tally for the day's set, so accuracy can be read per kind of puzzle.
   function recordResult(state, id, solved, theme, type) {
     if (!state.day || state.set.indexOf(id) < 0 || id in state.done) return false;
     var day = state.day;
