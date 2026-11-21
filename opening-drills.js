@@ -5,7 +5,7 @@ var OPENING_DRILLS = [
   "id": "opening-404b39863de3",
   "name": "Opening: your Ponziani",
   "description": "A spot from your own games where you left your line. Play your line's move.",
-  "result": "Your line plays c3 here (Deviation: 1...c5 Sicilian (Alapin 2.c3)). In your games you played Nf3 instead, 14 times.",
+  "result": "Your line plays c3 here (Deviation: 1...c5 Sicilian (Alapin 2.c3)). In your games you played Nf3 instead, 15 times.",
   "isTrap": false,
   "cat": "opening",
   "moves": [
@@ -59,7 +59,7 @@ var OPENING_DRILLS = [
   "id": "opening-790c2f37682d",
   "name": "Opening: your Ponziani",
   "description": "A spot from your own games where you left your line. Play your line's move.",
-  "result": "Your line plays Qa4 here. In your games you played d4 instead, 3 times.",
+  "result": "Your line plays Qa4 here. In your games you played Bb5, d4 instead, 4 times.",
   "isTrap": false,
   "cat": "opening",
   "moves": [
@@ -81,6 +81,97 @@ var OPENING_DRILLS = [
    "6": "KEY MOVE! Pin the c6 knight. e5 is now under fire.",
    "8": "Pin the knight again and develop actively.",
    "10": "Capture the center pawn with initiative."
+  }
+ },
+ {
+  "id": "opening-39afa1e3b0e0",
+  "name": "Opening: your Ponziani",
+  "description": "A spot from your own games where you left your line. Play your line's move.",
+  "result": "Your line plays Bd3 here (GothamChess: 3...Bc5 4.d4 with Qa4+). In your games you played Bd2 instead, once.",
+  "isTrap": false,
+  "cat": "opening",
+  "moves": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "c3",
+   "Bc5",
+   "d4",
+   "exd4",
+   "cxd4",
+   "Bb4+",
+   "Nc3",
+   "Nf6",
+   "d5",
+   "Ne7",
+   "Bd3",
+   "d6",
+   "Qa4+"
+  ],
+  "baseMoves": 14,
+  "playerColor": "w",
+  "explanations": {
+   "14": "Develop actively.",
+   "16": "Qa4+! Creates tactical threats including Qxb4 and dxc6."
+  }
+ },
+ {
+  "id": "opening-2251456900e8",
+  "name": "Opening: your Ponziani",
+  "description": "A spot from your own games where you left your line. Play your line's move.",
+  "result": "Your line plays Nxe5 here. In your games you played d5 instead, once.",
+  "isTrap": false,
+  "cat": "opening",
+  "moves": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "c3",
+   "f5",
+   "d4",
+   "fxe4",
+   "Nxe5",
+   "Qf6",
+   "Ng4",
+   "Qg6",
+   "Bf4"
+  ],
+  "baseMoves": 8,
+  "playerColor": "w",
+  "explanations": {
+   "8": "Jump in! Knight attacks c6, threatens Qh5+.",
+   "10": "Retreat to g4, attacking the queen.",
+   "12": "Develop with tempo, threatening c7."
+  }
+ },
+ {
+  "id": "opening-8350e8103959",
+  "name": "Opening: your Ponziani",
+  "description": "A spot from your own games where you left your line. Play your line's move.",
+  "result": "Your line plays d4 here. In your games you played exf5 instead, once.",
+  "isTrap": false,
+  "cat": "opening",
+  "moves": [
+   "e4",
+   "e5",
+   "Nf3",
+   "Nc6",
+   "c3",
+   "f5",
+   "d4",
+   "fxe4",
+   "Nxe5",
+   "Qf6",
+   "Ng4"
+  ],
+  "baseMoves": 6,
+  "playerColor": "w",
+  "explanations": {
+   "6": "Strike back in the center! Exploit the weakened kingside.",
+   "8": "Jump in! Knight attacks c6, threatens Qh5+.",
+   "10": "Retreat to g4, attacking the queen."
   }
  },
  {
