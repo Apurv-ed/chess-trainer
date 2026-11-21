@@ -32,7 +32,7 @@
 
   function emptyState() {
     return { day: null, set: [], kind: {}, done: {}, cursor: 0, carry: [], due: {}, own: {},
-      seen: {}, themes: {}, credit: {}, streak: 0, best: 0, lastDone: null, history: {} };
+      seen: {}, themes: {}, credit: {}, streak: 0, best: 0, lastDone: null, history: {}, types: {} };
   }
 
   // How much each theme is served. The pool is built in proportion to the
@@ -187,10 +187,19 @@
   // just after the day flips still counts for the set it belongs to). Returns
   // true when this completed the day's first 10. `theme` (a pool puzzle's cat)
   // feeds the weighted mix; leave it out for a skipped puzzle.
-  function recordResult(state, id, solved, theme) {
+  // `type` (optional, e.g. 'pool_easy', 'own_missed_win', 'opening') feeds a per-type
+  // tally for the day's first 10, so accuracy can be read per kind of puzzle.
+  function recordResult(state, id, solved, theme, type) {
     if (!state.day || state.set.indexOf(id) < 0 || id in state.done) return false;
     var day = state.day;
     state.done[id] = !!solved;
+    if (type && state.set.indexOf(id) < DAY_SIZE) {
+      if (!state.types) state.types = {};
+      var byType = state.types[day] = state.types[day] || {};
+      var x = byType[type] = byType[type] || { n: 0, c: 0 };
+      x.n++;
+      if (solved) x.c++;
+    }
     if (theme && state.kind[id] === 'pool') recordTheme(state, theme, solved);
     if (state.kind[id] === 'own') {
       var o = state.own[id] || { gap: 0 };

@@ -1211,9 +1211,17 @@ var app=(function(){
     saveDaily(st);
     return id?lineById(id):null;
   }
+  // Which kind of puzzle this is, for the per-type accuracy log (daily_progress.by_type).
+  function puzzleType(l){
+    var id=String(l.id),src=lineById(l.id)||{};
+    if(id.indexOf('daily-')===0)return src.rating<=1250?'pool_easy':'pool_hard';
+    if(id.indexOf('opening-')===0)return 'opening';
+    if(id.indexOf('tactics-')===0)return l.cat==='missed-win'?'own_missed_win':'own_blunder';
+    return 'other';
+  }
   function recordTodayResult(solved){
     var st=loadDaily();
-    var finished=Daily.recordResult(st,currentLine.id,solved,currentLine.cat);
+    var finished=Daily.recordResult(st,currentLine.id,solved,currentLine.cat,puzzleType(currentLine));
     saveDaily(st);
     if(finished)logDayToCloud(st,st.day);
     updateTodayBar();updateDailyStreakDisplay();
@@ -1251,10 +1259,14 @@ var app=(function(){
   // Fails silently: the streak lives on the phone either way.
   function logDayToCloud(st,today){
     var h=st.history[today]||{};
+    var row={day:today,done:h.done||0,correct:h.correct||0,streak:st.streak,best:st.best};
+    var headers={'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON,'Content-Type':'application/json','Prefer':'return=minimal'};
+    function post(body){return fetch(SUPABASE_URL+'/rest/v1/daily_progress',{method:'POST',headers:headers,body:JSON.stringify(body)})}
     try{
-      fetch(SUPABASE_URL+'/rest/v1/daily_progress',{method:'POST',
-        headers:{'apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({day:today,done:h.done||0,correct:h.correct||0,streak:st.streak,best:st.best})}).catch(function(){});
+      var withTypes=Object.assign({},row,{by_type:(st.types||{})[today]||null});
+      // If the by_type column has not been added in Supabase yet the insert is refused:
+      // retry without it so the day is still logged (supabase/daily_progress_by_type.sql).
+      post(withTypes).then(function(r){if(!r.ok)return post(row)}).catch(function(){});
     }catch(e){}
   }
 
