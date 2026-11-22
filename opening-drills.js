@@ -22,7 +22,7 @@ var OPENING_DRILLS = [
   "explanations": {
    "2": "c3! The Alapin -- same c3 idea as the Ponziani but against the Sicilian. Solidify first.",
    "4": "exd5! Open the center. The queen on d5 will be harassed.",
-   "6": "d4! Claim the full center. The queen must move."
+   "6": "d4! Claim the full center: pawns on c3 and d4 are the point of the Alapin."
   }
  },
  {
@@ -81,6 +81,12 @@ var OPENING_DRILLS = [
    "6": "KEY MOVE! Pin the c6 knight. e5 is now under fire.",
    "8": "Pin the knight again and develop actively.",
    "10": "Capture the center pawn with initiative."
+  },
+  "alts": {
+   "8": [
+    "d3",
+    "exd5"
+   ]
   }
  },
  {
@@ -197,7 +203,13 @@ var OPENING_DRILLS = [
   "explanations": {
    "4": "Nxe5! YES, take the pawn. The pin on the knight is gone -- 3.Nxe4 would give it back immediately.",
    "6": "Retreat to f3. Don't play 4.Nxf7?? (Cochrane Gambit) -- too risky for beginners.",
-   "8": "d4! Claim the center with tempo. The Ne4 is now under attack."
+   "8": "d4! Claim the center. Bd3 next hits the Ne4."
+  },
+  "alts": {
+   "8": [
+    "Qe2",
+    "Nc3"
+   ]
   }
  },
  {

@@ -294,7 +294,7 @@ L('ponz-fraser','Fraser Defence: 5...Bc5 6.dxc6 Bxf2+','Sharp gambit. White grab
 // === HANDLING BLACK DEVIATIONS (before Ponziani is established) ===
 L('ponz-deviation-petrov','Deviation: 2...Nf6 Petrov/Russian Defense','Black mirrors your Nf3. Don\'t panic -- Nxe5 is the right response!','White has active development, central pawns, and a small edge. The Petrov is drawish but White is fine.',0,'other',
 ['e4','e5','Nf3','Nf6','Nxe5','d6','Nf3','Nxe4','d4','d5','Bd3','Nc6','O-O','Be7','c4'],
-{4:'Nxe5! YES, take the pawn. The pin on the knight is gone -- 3.Nxe4 would give it back immediately.',6:'Retreat to f3. Don\'t play 4.Nxf7?? (Cochrane Gambit) -- too risky for beginners.',8:'d4! Claim the center with tempo. The Ne4 is now under attack.',10:'Bd3! Active development, eyeing the h7 pawn.',12:'Castle. White has active pieces and a solid center.',14:'c4! Challenge the d5 pawn and open lines for the bishops.'},3),
+{4:'Nxe5! YES, take the pawn. The pin on the knight is gone -- 3.Nxe4 would give it back immediately.',6:'Retreat to f3. Don\'t play 4.Nxf7?? (Cochrane Gambit) -- too risky for beginners.',8:'d4! Claim the center. Bd3 next hits the Ne4.',10:'Bd3! Active development, eyeing the h7 pawn.',12:'Castle. White has active pieces and a solid center.',14:'c4! Challenge the d5 pawn and open lines for the bishops.'},3),
 
 L('ponz-deviation-alekhine','Deviation: 1...Nf6 Alekhine\'s Defense','Black attacks your e4 pawn immediately. Kick the knight with e5 and build a big center!','White has a dominant center. Black\'s knights get kicked around.',0,'other',
 ['e4','Nf6','e5','Nd5','d4','d6','Nf3','Bg4','Be2','e6','O-O','Be7','c4','Nb6','Nc3'],
@@ -302,7 +302,7 @@ L('ponz-deviation-alekhine','Deviation: 1...Nf6 Alekhine\'s Defense','Black atta
 
 L('ponz-deviation-sicilian','Deviation: 1...c5 Sicilian (Alapin 2.c3)','Black plays the Sicilian. Use 2.c3 -- the Ponziani idea applied one move earlier!','White cashes in with dxc5: after ...Qxd1 Rxd1 the queenless middlegame gives White a small, risk-free pull (+0.5) with easy play.',0,'other',
 ['e4','c5','c3','d5','exd5','Qxd5','d4','Nf6','Nf3','e6','Be2','Nc6','O-O','Be7','Be3','O-O','dxc5'],
-{2:'c3! The Alapin -- same c3 idea as the Ponziani but against the Sicilian. Solidify first.',4:'exd5! Open the center. The queen on d5 will be harassed.',6:'d4! Claim the full center. The queen must move.',8:'Nf3 with tempo -- queen has to move again.',10:'Be2! Simple, solid development.',12:'Castle. White has a stable center.',14:'Be3! Develop and support d4.',16:'dxc5! Cash in: trade queens on d1 and Black must spend time regaining the c5 pawn. Small, risk-free edge.'},1),
+{2:'c3! The Alapin -- same c3 idea as the Ponziani but against the Sicilian. Solidify first.',4:'exd5! Open the center. The queen on d5 will be harassed.',6:'d4! Claim the full center: pawns on c3 and d4 are the point of the Alapin.',8:'Nf3! Simple development; Nc3 next hits the queen.',10:'Be2! Simple, solid development.',12:'Castle. White has a stable center.',14:'Be3! Develop and support d4.',16:'dxc5! Cash in: trade queens on d1 and Black must spend time regaining the c5 pawn. Small, risk-free edge.'},1),
 
 // === BEGINNER PUNISHMENTS ===
 L('ponz-beginner-qf6','Beginner: 3...Qf6 (Early Queen)','Black brings out the queen too early. White develops with tempo.','White is winning (+2): huge center and space, Black\'s knight is buried on d8 and the early queen achieved nothing.',0,'beginner',
@@ -672,11 +672,11 @@ var app=(function(){
     }
     if(!src)src=selectWeightedLine(poolLines);
     var isDailyPool=!!src.startFen;
-    currentLine={id:src.id,name:src.name,description:src.description,result:src.result,
+    currentLine={src:src,id:src.id,name:src.name,description:src.description,result:src.result,
       isTrap:src.isTrap,cat:src.cat,opening:isDailyPool?'daily':src.opening,playerColor:src.playerColor,
       // Lichess puzzles start from a FEN; their first move (the opponent's) is
       // auto-played with the orange arrow like any other opponent move.
-      baseMoves:isDailyPool?0:src.baseMoves,flexible:src.flexible,startFen:src.startFen||null,
+      baseMoves:isDailyPool?0:src.baseMoves,flexible:src.flexible,alts:src.alts||null,startFen:src.startFen||null,
       moves:src.moves.slice(),explanations:$.extend({},src.explanations)};
     if(currentLine.startFen)game.load(currentLine.startFen);
     currentLine.startColor=game.turn();
@@ -771,6 +771,14 @@ var app=(function(){
     // A different move that also mates is just as correct (Lichess accepts any mate too).
     if(!isCorrect&&expectedMove.san.indexOf('#')>=0&&userMove.san.indexOf('#')>=0){
       currentLine.moves[moveIndex]=userMove.san;
+      expectedSan=userMove.san;
+      isCorrect=true;
+    }
+    // An opening drill can list other moves the engine rates as equal (alts, by move index). Accept one and end the drill there: the scripted reply no longer fits.
+    if(!isCorrect&&currentLine.alts&&currentLine.alts[moveIndex]&&currentLine.alts[moveIndex].indexOf(userMove.san)>=0){
+      var lineMove=currentLine.moves[moveIndex];
+      currentLine.moves=currentLine.moves.slice(0,moveIndex).concat([userMove.san]);
+      currentLine.explanations[moveIndex]='Good: the engine rates '+userMove.san+' about as well as the line move '+lineMove+'. Either is fine here.';
       expectedSan=userMove.san;
       isCorrect=true;
     }
@@ -901,7 +909,7 @@ var app=(function(){
   }
 
   function nextLine(){startDrill()}
-  function retryLine(){startDrill(currentLine)}
+  function retryLine(){startDrill(currentLine.src||currentLine)} // the original line, not a copy an accepted alternative shortened
 
   function undo(){
     if(isAnimating||!currentLine||moveIndex<=currentLine.baseMoves)return;
